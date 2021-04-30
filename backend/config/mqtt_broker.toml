@@ -1,0 +1,19 @@
+id = 0
+
+[router]
+id = 0
+dir = "/tmp/rumqttd"
+max_segment_size = 10240
+max_segment_count = 10
+max_connections = 10001
+
+[servers.1]
+port = 1883
+next_connection_delay_ms = 1
+[servers.1.connections]
+connection_timeout_ms = 5000
+max_client_id_len = 256
+throttle_delay_ms = 0
+max_payload_size = 5120
+max_inflight_count = 200
+max_inflight_size = 1024

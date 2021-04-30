@@ -65,6 +65,7 @@ fn build_backend() -> Result<(), String> {
 }
 
 fn main() -> Result<(), String> {
+    println!("cargo:rerun-if-changed=common/*");
     println!("cargo:rerun-if-changed=frontend/*");
     println!("cargo:rerun-if-changed=backend/*");
 

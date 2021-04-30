@@ -1,10 +1,10 @@
 mod config;
 mod database;
-mod protocol;
+mod mqtt;
 mod server;
 
 use actix_files::NamedFile;
-use actix_web::{get, web, App, HttpServer, Responder};
+use actix_web::{App, HttpServer, Responder, get, web};
 use config::ServerConfig;
 use database::Database;
 
@@ -20,11 +20,15 @@ async fn wasm(web::Path(filename): web::Path<String>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let config_json = include_str!("../config.json");
+    mqtt::run_mqtt_broker();
+
+    let config_json = include_str!("../config/server_cfg.json");
     let config: ServerConfig = serde_json::from_str(config_json).expect("Invalid config.json");
     assert!(config.validate(), "Invalid config.json");
 
     let database = web::Data::new(Database::new(config.db_url()).await.unwrap());
+    
+    mqtt::run_mqtt_subscriber(database.clone());
 
     HttpServer::new(move || {
         App::new()

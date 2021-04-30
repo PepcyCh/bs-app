@@ -1,16 +1,16 @@
-use crate::protocol::{LoginInfo, RegisterInfo};
 use bson::doc;
+use common::{request::{CreateDeviceRequest, FetchDevicesRequest, FetchMessagesRequest, LoginRequest, RegisterRequest, RemoveDeviceRequest}, response::{DeviceInfo, MessageInfo}};
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
     Client, Collection,
 };
 use serde::{Deserialize, Serialize};
+use futures::StreamExt;
 
 pub struct Database {
-    _client: Client,
     users: Collection,
-    _devices: Collection,
-    _messages: Collection,
+    devices: Collection,
+    messages: Collection,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -33,13 +33,14 @@ struct Device {
 }
 
 #[derive(Deserialize, Serialize)]
-struct Message {
+pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     _id: Option<bson::oid::ObjectId>,
+    #[serde(rename = "clientId")]
     id: String,
     info: String,
-    value: i32,
-    alert: i32,
+    value: u32,
+    alert: u8,
     lng: f64,
     lat: f64,
     timestamp: u64,
@@ -57,14 +58,13 @@ impl Database {
         let messages = database.collection("messages");
 
         Ok(Self {
-            _client: client,
             users,
-            _devices: devices,
-            _messages: messages,
+            devices,
+            messages,
         })
     }
 
-    pub async fn try_login(&self, info: LoginInfo) -> Result<(String, String), String> {
+    pub async fn try_login(&self, info: LoginRequest) -> Result<(String, String), String> {
         let filter = doc! {
             "mail": info.mail
         };
@@ -81,18 +81,18 @@ impl Database {
         Err("No such user".to_string())
     }
 
-    pub async fn try_register(&self, info: RegisterInfo) -> Result<(), String> {
+    pub async fn try_register(&self, info: RegisterRequest) -> Result<(), String> {
         let filter = doc! {
             "mail": &info.mail,
         };
-        if let Ok(Some(_)) = self.users.find_one(filter, None).await {
+        if let Some(_) = self.users.find_one(filter, None).await.unwrap() {
             return Err("Duplicated mail address".to_string());
         }
 
         let filter = doc! {
             "name": &info.name,
         };
-        if let Ok(Some(_)) = self.users.find_one(filter, None).await {
+        if let Some(_) = self.users.find_one(filter, None).await.unwrap() {
             return Err("Duplicated username".to_string());
         }
 
@@ -108,7 +108,158 @@ impl Database {
         if let Ok(_) = self.users.insert_one(doc.to_owned(), None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("Unknown error".to_string())
         }
     }
+
+    pub async fn insert_message(&self, msg: Message) -> Result<(), String> {
+        let serialized_msg = bson::to_bson(&msg).unwrap();
+        let doc = serialized_msg.as_document().unwrap();
+        if let Ok(_) = self.messages.insert_one(doc.to_owned(), None).await {
+            Ok(())
+        } else {
+            Err("Unknown error".to_string())
+        }
+    }
+
+    pub async fn create_device(&self, info: CreateDeviceRequest) -> Result<(), String> {
+        let filter = doc! {
+            "mail": info.mail.clone(),
+        };
+        if let None = self.users.find_one(filter, None).await.unwrap() {
+            return Err("User doesn't exist".to_string());
+        }
+
+        let filter = doc! {
+            "id": info.id.clone()
+        };
+        if let None = self.devices.find_one(filter, None).await.unwrap() {
+            let dev = Device {
+                _id: None,
+                id: info.id.clone(),
+                name: info.id.clone(),
+                info: "".to_string(),
+            };
+            let serialized_dev = bson::to_bson(&dev).unwrap();
+            let doc = serialized_dev.as_document().unwrap();
+            if let Err(_) = self.devices.insert_one(doc.to_owned(), None).await {
+                return Err("Unknown error".to_string());
+            }
+        }
+
+        let query = doc! {
+            "mail": info.mail
+        };
+        let update = doc! {
+            "$push": {
+                "devices": info.id.clone(),
+            }
+        };
+        if let Ok(_) = self.users.update_one(query, update, None).await {
+            Ok(())
+        } else {
+            Err("Unknown error".to_string())
+        }
+    }
+
+    pub async fn remove_device(&self, info: RemoveDeviceRequest) -> Result<(), String> {
+        let filter = doc! {
+            "mail": info.mail.clone(),
+        };
+        if let None = self.users.find_one(filter, None).await.unwrap() {
+            return Err("User doesn't exist".to_string());
+        }
+
+        let filter = doc! {
+            "mail": info.mail.clone(),
+            "devices": {
+                "$elemMatch": info.id.clone()
+            }
+        };
+        if let None = self.users.find_one(filter, None).await.unwrap() {
+            return Err("Device doesn't exist".to_string());
+        }
+
+        let query = doc! {
+            "mail": info.mail
+        };
+        let update = doc! {
+            "$pull": {
+                "devices": info.id.clone(),
+            }
+        };
+        if let Ok(_) = self.users.update_one(query, update, None).await {
+            Ok(())
+        } else {
+            Err("Unknown error".to_string())
+        }
+    }
+
+    pub async fn fetch_devices(&self, info: FetchDevicesRequest) -> Result<Vec<DeviceInfo>, String> {
+        let filter = doc! {
+            "mail": info.mail.clone(),
+        };
+        let user = self.users.find_one(filter, None).await.unwrap();
+        if user.is_none() {
+            return Err("User doesn't exist".to_string());
+        }
+        let user: User = bson::from_bson(bson::Bson::Document(user.unwrap())).unwrap();
+
+        let mut devices = Vec::with_capacity(user.devices.len());
+        for id in &user.devices {
+            let filter = doc! {
+                "id": id.clone()
+            };
+            if let Some(dev) = self.devices.find_one(filter, None).await.unwrap() {
+                let dev: Device = bson::from_bson(bson::Bson::Document(dev)).unwrap();
+                let dev = DeviceInfo {
+                    id: dev.id,
+                    name: dev.name,
+                    info: dev.info,
+
+                };
+                devices.push(dev);
+            } else {
+                return Err("Device doesn't exist".to_string())
+            }
+        }
+
+        Ok(devices)
+    }
+
+    pub async fn fetch_messages(&self, info: FetchMessagesRequest) -> Result<Vec<MessageInfo>, String> {
+        let filter = doc! {
+            "id": info.id.clone(),
+        };
+        if let None = self.users.find_one(filter, None).await.unwrap() {
+            return Err("Device doesn't exist".to_string());
+        }
+
+        let filter = doc! {
+            "id": info.id.clone(),
+            "timestamp": {
+                "$gte": info.start_timestamp,
+                "$lte": info.end_timestamp,
+            }
+        };
+        let mut cursor = self.messages.find(filter, None).await.unwrap();
+        let mut messages = vec![];
+        while let Some(msg) = cursor.next().await {
+            let msg: Message = bson::from_bson(bson::Bson::Document(msg.unwrap())).unwrap();
+            let msg = MessageInfo {
+                id: msg.id,
+                info: msg.info,
+                value: msg.value,
+                alert: msg.alert != 0,
+                lng: msg.lng,
+                lat: msg.lat,
+                timestamp: msg.timestamp,
+            };
+            messages.push(msg);
+        }
+
+        Ok(messages)
+    }
+
+    // TODO - modify device
 }

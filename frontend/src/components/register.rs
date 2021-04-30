@@ -1,7 +1,5 @@
-use crate::{
-    protocol::{RegisterInfo, RegisterResponse},
-    route::AppRoute,
-};
+use crate::route::AppRoute;
+use common::{request::RegisterRequest, response::{ErrorResponse, SimpleResponse}};
 use lazy_static::lazy_static;
 use regex::Regex;
 use yew::{
@@ -40,7 +38,7 @@ pub enum Msg {
     EditPassword(String),
     EditPasswordTwice(String),
     Register,
-    RegisterResponse(RegisterResponse),
+    RegisterResponse(SimpleResponse),
 }
 
 #[derive(Properties, Clone)]
@@ -99,7 +97,7 @@ impl Component for RegisterComponent {
                 } else if self.state.password != self.state.password_twice {
                     self.state.err = Some("The 2 passwords are different".to_string());
                 } else {
-                    let register_info = RegisterInfo {
+                    let register_info = RegisterRequest {
                         mail: self.state.mail.clone(),
                         name: self.state.name.clone(),
                         password: self.state.password.clone(),
@@ -110,15 +108,12 @@ impl Component for RegisterComponent {
                         .body(Json(&body))
                         .expect("Failed to construct register request");
                     let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<RegisterResponse>>>| {
+                        |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
                             let Json(data) = response.into_body();
                             if let Ok(response) = data {
                                 Msg::RegisterResponse(response)
                             } else {
-                                Msg::RegisterResponse(RegisterResponse {
-                                    success: false,
-                                    err: "Unknown error".to_string(),
-                                })
+                                Msg::RegisterResponse(SimpleResponse::err("Unknown error"))
                             }
                         },
                     );

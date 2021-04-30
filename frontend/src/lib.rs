@@ -1,8 +1,8 @@
 #![recursion_limit = "256"]
 #[rustfmt::skip::macros(html)]
+
 mod app;
 mod components;
-mod protocol;
 mod route;
 
 use wasm_bindgen::prelude::*;

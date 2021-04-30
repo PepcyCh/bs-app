@@ -1,7 +1,5 @@
-use crate::{
-    protocol::{LoginInfo, LoginResponse},
-    route::AppRoute,
-};
+use crate::route::AppRoute;
+use common::{request::LoginRequest, response::{ErrorResponse, LoginResponse}};
 use yew::{
     agent::Bridged,
     format::Json,
@@ -71,7 +69,7 @@ impl Component for LoginComponent {
             Msg::Login => {
                 if !self.state.mail.is_empty() && !self.state.password.is_empty() {
                     self.state.err = None;
-                    let login_info = LoginInfo {
+                    let login_info = LoginRequest {
                         mail: self.state.mail.clone(),
                         password: self.state.password.clone(),
                     };
@@ -86,12 +84,7 @@ impl Component for LoginComponent {
                             if let Ok(result) = data {
                                 Msg::LoginResponse(result)
                             } else {
-                                Msg::LoginResponse(LoginResponse {
-                                    success: false,
-                                    err: "Unknown error".to_string(),
-                                    mail: "".to_string(),
-                                    name: "".to_string(),
-                                })
+                                Msg::LoginResponse(LoginResponse::err("Unknown error"))
                             }
                         },
                     );
