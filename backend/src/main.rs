@@ -4,7 +4,7 @@ mod mqtt;
 mod server;
 
 use actix_files::NamedFile;
-use actix_web::{App, HttpServer, Responder, get, web};
+use actix_web::{get, web, App, HttpServer, Responder};
 use config::ServerConfig;
 use database::Database;
 
@@ -27,7 +27,7 @@ async fn main() -> std::io::Result<()> {
     assert!(config.validate(), "Invalid config.json");
 
     let database = web::Data::new(Database::new(config.db_url()).await.unwrap());
-    
+
     mqtt::run_mqtt_subscriber(database.clone());
 
     HttpServer::new(move || {

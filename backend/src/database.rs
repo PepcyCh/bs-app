@@ -1,11 +1,17 @@
 use bson::doc;
-use common::{request::{CreateDeviceRequest, FetchDevicesRequest, FetchMessagesRequest, LoginRequest, RegisterRequest, RemoveDeviceRequest}, response::{DeviceInfo, MessageInfo}};
+use common::{
+    request::{
+        CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest, FetchMessageListRequest,
+        LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest,
+    },
+    response::{DeviceInfo, MessageInfo},
+};
+use futures::StreamExt;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
     Client, Collection,
 };
 use serde::{Deserialize, Serialize};
-use futures::StreamExt;
 
 pub struct Database {
     users: Collection,
@@ -36,11 +42,10 @@ struct Device {
 pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     _id: Option<bson::oid::ObjectId>,
-    #[serde(rename = "clientId")]
     id: String,
     info: String,
     value: u32,
-    alert: u8,
+    alert: bool,
     lng: f64,
     lat: f64,
     timestamp: u64,
@@ -64,7 +69,7 @@ impl Database {
         })
     }
 
-    pub async fn try_login(&self, info: LoginRequest) -> Result<(String, String), String> {
+    pub async fn login(&self, info: LoginRequest) -> Result<(String, String), String> {
         let filter = doc! {
             "mail": info.mail
         };
@@ -81,7 +86,7 @@ impl Database {
         Err("No such user".to_string())
     }
 
-    pub async fn try_register(&self, info: RegisterRequest) -> Result<(), String> {
+    pub async fn register(&self, info: RegisterRequest) -> Result<(), String> {
         let filter = doc! {
             "mail": &info.mail,
         };
@@ -195,7 +200,50 @@ impl Database {
         }
     }
 
-    pub async fn fetch_devices(&self, info: FetchDevicesRequest) -> Result<Vec<DeviceInfo>, String> {
+    pub async fn modify_device(&self, info: ModifyDeviceRequest) -> Result<(), String> {
+        let filter = doc! {
+            "id": info.id.clone(),
+        };
+        let device = self.devices.find_one(filter, None).await.unwrap();
+        if device.is_none() {
+            return Err("Device doesn't exist".to_string());
+        }
+
+        let query = doc! {
+            "id": info.id,
+        };
+        let update = doc! {
+            "$set": {
+                "name": info.name,
+                "info": info.info,
+            }
+        };
+        if let Ok(_) = self.devices.update_one(query, update, None).await {
+            Ok(())
+        } else {
+            Err("Unknown error".to_string())
+        }
+    }
+
+    pub async fn fetch_device(
+        &self,
+        info: FetchDeviceRequest,
+    ) -> Result<(String, String, String), String> {
+        let filter = doc! {
+            "id": info.id
+        };
+        let device = self.devices.find_one(filter, None).await.unwrap();
+        if device.is_none() {
+            return Err("Device doesn't exist".to_string());
+        }
+        let device: Device = bson::from_bson(bson::Bson::Document(device.unwrap())).unwrap();
+        Ok((device.id, device.name, device.info))
+    }
+
+    pub async fn fetch_device_list(
+        &self,
+        info: FetchDeviceListRequest,
+    ) -> Result<Vec<DeviceInfo>, String> {
         let filter = doc! {
             "mail": info.mail.clone(),
         };
@@ -212,22 +260,44 @@ impl Database {
             };
             if let Some(dev) = self.devices.find_one(filter, None).await.unwrap() {
                 let dev: Device = bson::from_bson(bson::Bson::Document(dev)).unwrap();
+
+                let count_filter = doc! {
+                    "id": dev.id.clone(),
+                };
+                let message_count = self
+                    .messages
+                    .count_documents(count_filter, None)
+                    .await
+                    .unwrap() as u32;
+                let count_filter = doc! {
+                    "id": dev.id.clone(),
+                    "alert": true,
+                };
+                let alert_message_count = self
+                    .messages
+                    .count_documents(count_filter, None)
+                    .await
+                    .unwrap() as u32;
+
                 let dev = DeviceInfo {
                     id: dev.id,
                     name: dev.name,
-                    info: dev.info,
-
+                    message_count,
+                    alert_message_count,
                 };
                 devices.push(dev);
             } else {
-                return Err("Device doesn't exist".to_string())
+                return Err("Device doesn't exist".to_string());
             }
         }
 
         Ok(devices)
     }
 
-    pub async fn fetch_messages(&self, info: FetchMessagesRequest) -> Result<Vec<MessageInfo>, String> {
+    pub async fn fetch_message_list(
+        &self,
+        info: FetchMessageListRequest,
+    ) -> Result<Vec<MessageInfo>, String> {
         let filter = doc! {
             "id": info.id.clone(),
         };
@@ -250,7 +320,7 @@ impl Database {
                 id: msg.id,
                 info: msg.info,
                 value: msg.value,
-                alert: msg.alert != 0,
+                alert: msg.alert,
                 lng: msg.lng,
                 lat: msg.lat,
                 timestamp: msg.timestamp,
@@ -260,6 +330,27 @@ impl Database {
 
         Ok(messages)
     }
+}
 
-    // TODO - modify device
+impl Message {
+    pub fn new(
+        id: String,
+        info: String,
+        value: u32,
+        alert: bool,
+        lng: f64,
+        lat: f64,
+        timestamp: u64,
+    ) -> Self {
+        Self {
+            _id: None,
+            id,
+            info,
+            value,
+            alert,
+            lng,
+            lat,
+            timestamp,
+        }
+    }
 }

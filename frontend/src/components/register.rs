@@ -1,5 +1,8 @@
 use crate::route::AppRoute;
-use common::{request::RegisterRequest, response::{ErrorResponse, SimpleResponse}};
+use common::{
+    request::RegisterRequest,
+    response::{ErrorResponse, SimpleResponse},
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 use yew::{
@@ -47,7 +50,8 @@ pub struct Prop {
 }
 
 lazy_static! {
-    static ref MAIL_RE: Regex = Regex::new(r"^[0-9a-zA-Z._+-]+@[0-9a-zA-Z-]+\.[0-9a-zA-Z-.]+$").unwrap();
+    static ref MAIL_RE: Regex =
+        Regex::new(r"^[0-9a-zA-Z._+-]+@[0-9a-zA-Z-]+\.[0-9a-zA-Z-.]+$").unwrap();
     static ref NAME_RE: Regex = Regex::new(r"^[0-9a-zA-Z_]{3, 32}$").unwrap();
     static ref PASSWORD_RE: Regex = Regex::new(r"^[0-9a-zA-Z_]{6, 32}$").unwrap();
 }

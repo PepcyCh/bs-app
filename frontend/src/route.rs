@@ -6,8 +6,12 @@ pub enum AppRoute {
     Login,
     #[to = "/#register"]
     Register,
-    #[to = "/#content"]
-    Content,
-    #[to = "/"]
+    #[to = "/#home"]
     Home,
+    #[to = "/#modify_device"]
+    ModifyDevice,
+    #[to = "/#device_content"]
+    DeviceContent,
+    #[to = "/"]
+    Default,
 }

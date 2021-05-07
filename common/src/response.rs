@@ -15,14 +15,24 @@ pub struct LoginResponse {
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct DeviceInfo {
+pub struct FetchDeviceResponse {
+    pub success: bool,
+    pub err: String,
     pub id: String,
     pub name: String,
     pub info: String,
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct FetchDevicesResponse {
+pub struct DeviceInfo {
+    pub id: String,
+    pub name: String,
+    pub message_count: u32,
+    pub alert_message_count: u32,
+}
+
+#[derive(Default, Deserialize, Serialize)]
+pub struct FetchDeviceListResponse {
     pub success: bool,
     pub err: String,
     pub devices: Vec<DeviceInfo>,
@@ -40,7 +50,7 @@ pub struct MessageInfo {
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct FetchMessagesResponse {
+pub struct FetchMessageListResponse {
     pub success: bool,
     pub err: String,
     pub messages: Vec<MessageInfo>,
@@ -69,6 +79,7 @@ macro_rules! error_response_impl {
 error_response_impl! {
     SimpleResponse,
     LoginResponse,
-    FetchDevicesResponse,
-    FetchMessagesResponse,
+    FetchDeviceResponse,
+    FetchDeviceListResponse,
+    FetchMessageListResponse,
 }

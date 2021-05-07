@@ -4,7 +4,15 @@ fn build_frontend() -> Result<(), String> {
     eprintln!("Building frontend...");
 
     let status = Command::new("wasm-pack")
-        .args(&["build", "--target", "web", "--out-name", "wasm", "--out-dir", "../out"])
+        .args(&[
+            "build",
+            "--target",
+            "web",
+            "--out-name",
+            "wasm",
+            "--out-dir",
+            "../out",
+        ])
         .current_dir("./frontend")
         .status()
         .expect("Failed to build frontend");
@@ -18,7 +26,10 @@ fn build_frontend() -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
-        Err(format!("Failed to build frontend. Process exits with {}", status))
+        Err(format!(
+            "Failed to build frontend. Process exits with {}",
+            status
+        ))
     }
 }
 
@@ -50,17 +61,16 @@ fn build_backend() -> Result<(), String> {
     let exe_path = format!("./backend/target/{}/{}", target_dir, exe_name);
     let mut copy_option = fs_extra::dir::CopyOptions::new();
     copy_option.overwrite = true;
-    fs_extra::copy_items(
-        &[exe_path],
-        "./out",
-        &copy_option,
-    )
-    .expect("Failed to copy backend outputs");
-    
+    fs_extra::copy_items(&[exe_path], "./out", &copy_option)
+        .expect("Failed to copy backend outputs");
+
     if status.success() {
         Ok(())
     } else {
-        Err(format!("Failed to build backend. Process exits with {}", status))
+        Err(format!(
+            "Failed to build backend. Process exits with {}",
+            status
+        ))
     }
 }
 

@@ -15,41 +15,50 @@ pub struct RegisterRequest {
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct CreateDeviceRequest {
+    /// mail - user mail address
     pub mail: String,
+    /// id - device id
     pub id: String,
 }
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct RemoveDeviceRequest {
+    /// mail - user mail address
     pub mail: String,
+    /// id - device id
     pub id: String,
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct ModifyDeviceNameRequest {
+pub struct FetchDeviceRequest {
+    /// id - device id
     pub id: String,
+}
+
+#[derive(Default, Deserialize, Serialize)]
+pub struct ModifyDeviceRequest {
+    /// id - device id
+    pub id: String,
+    /// mail - user mail address
     pub name: String,
-}
-
-#[derive(Default, Deserialize, Serialize)]
-pub struct ModifyDeviceInfoRequest {
-    pub id: String,
     pub info: String,
 }
 
 #[derive(Default, Deserialize, Serialize)]
-pub struct FetchDevicesRequest {
+pub struct FetchDeviceListRequest {
+    /// mail - user mail address
     pub mail: String,
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct FetchMessagesRequest {
+pub struct FetchMessageListRequest {
+    /// id - device id
     pub id: String,
     pub start_timestamp: u64,
     pub end_timestamp: u64,
 }
 
-impl Default for FetchMessagesRequest {
+impl Default for FetchMessageListRequest {
     fn default() -> Self {
         Self {
             id: String::default(),

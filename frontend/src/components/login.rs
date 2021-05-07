@@ -1,5 +1,8 @@
 use crate::route::AppRoute;
-use common::{request::LoginRequest, response::{ErrorResponse, LoginResponse}};
+use common::{
+    request::LoginRequest,
+    response::{ErrorResponse, LoginResponse},
+};
 use yew::{
     agent::Bridged,
     format::Json,
@@ -97,7 +100,7 @@ impl Component for LoginComponent {
             Msg::LoginResponse(response) => {
                 self.fetch_task = None;
                 if response.success {
-                    self.route_agent.send(ChangeRoute(AppRoute::Content.into()));
+                    self.route_agent.send(ChangeRoute(AppRoute::Home.into()));
                     self.props.onlogin.emit((response.mail, response.name));
                 } else {
                     self.state.err = Some(response.err);
