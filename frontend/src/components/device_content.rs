@@ -19,14 +19,12 @@ use crate::route::AppRoute;
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
+    props: Prop,
     state: State,
     fetch_task: Option<FetchTask>,
 }
 
 struct State {
-    id: String,
-    name: String,
-    info: String,
     start_timestamp_str: String,
     end_timestamp_str: String,
     messages: Vec<MessageInfo>,
@@ -53,19 +51,19 @@ impl Component for DeviceContent {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let state = State {
-            id: (*props.id).clone(),
-            name: (*props.name).clone(),
-            info: (*props.info).clone(),
             start_timestamp_str: "".to_string(),
             end_timestamp_str: "".to_string(),
             messages: vec![],
             err: None,
         };
-        Self {
+        let mut component = Self {
             link,
+            props,
             state,
             fetch_task: None,
-        }
+        };
+        component.update(Msg::Fetch);
+        component
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
@@ -93,7 +91,7 @@ impl Component for DeviceContent {
                     .or::<()>(Ok(u64::MAX))
                     .unwrap();
                 let fetch_info = FetchMessageListRequest {
-                    id: self.state.id.clone(),
+                    id: (*self.props.id).clone(),
                     start_timestamp,
                     end_timestamp,
                 };
@@ -128,8 +126,13 @@ impl Component for DeviceContent {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> yew::ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
+        if self.props != props {
+            self.props = props;
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> yew::Html {
@@ -141,10 +144,10 @@ impl Component for DeviceContent {
 
         html! {
             <div>
-                <h1>{ &self.state.name }</h1>
+                <h1>{ &self.props.name }</h1>
                 <div>
-                    <p>{ format!("ID: {}", &self.state.id) }</p>
-                    <p>{ &self.state.info }</p>
+                    <p>{ format!("ID: {}", &self.props.id) }</p>
+                    <p>{ &self.props.info }</p>
                 </div>
                 {
                     if let Some(err) = &self.state.err {

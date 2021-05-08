@@ -31,8 +31,7 @@ pub enum Msg {
     Nop,
     Login((String, String)),
     Register,
-    ModifyDevice((String, String, String)),
-    ToContent,
+    SelectDevice((String, String, String)),
 }
 
 impl Component for App {
@@ -62,14 +61,10 @@ impl Component for App {
                 self.route_agent.send(ChangeRoute(AppRoute::Login.into()));
                 true
             }
-            Msg::ModifyDevice((id, name, info)) => {
+            Msg::SelectDevice((id, name, info)) => {
                 self.state.device_id = id;
                 self.state.device_name = name;
                 self.state.device_info = info;
-                true
-            }
-            Msg::ToContent => {
-                self.route_agent.send(ChangeRoute(AppRoute::Home.into()));
                 true
             }
         }
@@ -84,9 +79,9 @@ impl Component for App {
             .link
             .callback(|data: (String, String)| Msg::Login(data));
         let register_callback = self.link.callback(|_| Msg::Register);
-        let modify_device_callback = self
+        let select_device_callback = self
             .link
-            .callback(|data: (String, String, String)| Msg::ModifyDevice(data));
+            .callback(|data: (String, String, String)| Msg::SelectDevice(data));
         let mail = Rc::new(self.state.mail.clone());
         let name = Rc::new(self.state.name.clone());
         let device_id = Rc::new(self.state.device_id.clone());
@@ -107,7 +102,7 @@ impl Component for App {
                             <HomeComponent
                                 mail=mail.clone()
                                 name=name.clone()
-                                onmodify=modify_device_callback.clone() />
+                                onselect=select_device_callback.clone() />
                         },
                         AppRoute::ModifyDevice => html! {
                             <ModifyDevice

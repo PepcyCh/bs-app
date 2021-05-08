@@ -20,15 +20,19 @@ async fn wasm(web::Path(filename): web::Path<String>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    println!("Begin");
     mqtt::run_mqtt_broker();
+    println!("MQTT broker is running");
 
     let config_json = include_str!("../config/server_cfg.json");
     let config: ServerConfig = serde_json::from_str(config_json).expect("Invalid config.json");
     assert!(config.validate(), "Invalid config.json");
 
     let database = web::Data::new(Database::new(config.db_url()).await.unwrap());
+    println!("MongoDB is connected");
 
     mqtt::run_mqtt_subscriber(database.clone());
+    println!("MQTT subscriber is running");
 
     HttpServer::new(move || {
         App::new()

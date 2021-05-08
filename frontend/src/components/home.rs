@@ -1,23 +1,19 @@
 use std::rc::Rc;
 
-use common::{
-    request::{CreateDeviceRequest, FetchDeviceListRequest},
-    response::{DeviceInfo, ErrorResponse, FetchDeviceListResponse, SimpleResponse},
-};
-use yew::{
-    format::Json,
-    html,
-    services::{
+use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest}, response::{DeviceInfo, ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, SimpleResponse}};
+use yew::{agent::Bridged, Bridge, Callback, Component, ComponentLink, InputData, Properties, format::Json, html, services::{
         fetch::{FetchTask, Request, Response},
         FetchService,
-    },
-    Callback, Component, ComponentLink, InputData, Properties,
-};
+    }};
+use yew_router::{prelude::RouteAgent, agent::RouteRequest::ChangeRoute};
+
+use crate::route::AppRoute;
 
 pub struct HomeComponent {
     link: ComponentLink<Self>,
     props: Prop,
     state: State,
+    route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
 }
 
@@ -29,19 +25,23 @@ struct State {
 }
 
 pub enum Msg {
+    Nop,
     EditCreateId(String),
     CreateDevice,
     CreateDeviceResponse(SimpleResponse),
     Fetch,
     FetchResponse(FetchDeviceListResponse),
-    // TODO - logout, modify, remove
+    Modify(usize),
+    ModifyResponse(FetchDeviceResponse),
+    Details(usize),
+    DetialsResponse(FetchDeviceResponse),
 }
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Prop {
     pub mail: Rc<String>,
     pub name: Rc<String>,
-    pub onmodify: Callback<(String, String, String)>,
+    pub onselect: Callback<(String, String, String)>,
 }
 
 impl Component for HomeComponent {
@@ -49,16 +49,21 @@ impl Component for HomeComponent {
     type Properties = Prop;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
+        let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
+        let mut component = Self {
             link,
             props,
             state: State::default(),
+            route_agent,
             fetch_task: None,
-        }
+        };
+        component.update(Msg::Fetch);
+        component
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
+            Msg::Nop => false,
             Msg::EditCreateId(create_id) => {
                 self.state.create_id = create_id;
                 false
@@ -92,10 +97,11 @@ impl Component for HomeComponent {
                 self.fetch_task = None;
                 if response.success {
                     self.state.err = None;
+                    self.update(Msg::Fetch)
                 } else {
                     self.state.err = Some(response.err);
+                    true
                 }
-                true
             }
             Msg::Fetch => {
                 self.state.err = None;
@@ -126,6 +132,82 @@ impl Component for HomeComponent {
                 if response.success {
                     self.state.err = None;
                     self.state.devices = response.devices;
+                } else {
+                    self.state.err = Some(response.err);
+                }
+                true
+            }
+            Msg::Modify(index) => {
+                if index < self.state.devices.len() {
+                    self.state.err = None;
+                    let fetch_info = FetchDeviceRequest {
+                        id: self.state.devices[index].id.clone(),
+                    };
+                    let body = serde_json::to_value(&fetch_info).unwrap();
+                    let request = Request::post("/fetch_device")
+                        .header("Content-Type", "application/json")
+                        .body(Json(&body))
+                        .expect("Failed to construct fetch device request");
+                    let callback = self.link.callback(
+                        |response: Response<Json<anyhow::Result<FetchDeviceResponse>>>| {
+                            let Json(data) = response.into_body();
+                            if let Ok(result) = data {
+                                Msg::ModifyResponse(result)
+                            } else {
+                                Msg::ModifyResponse(FetchDeviceResponse::err("Unknown error"))
+                            }
+                        },
+                    );
+                    let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                    self.fetch_task = Some(task);
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::ModifyResponse(response) => {
+                self.fetch_task = None;
+                if response.success {
+                    self.props.onselect.emit((response.id, response.name, response.info));
+                    self.route_agent.send(ChangeRoute(AppRoute::ModifyDevice.into()));
+                } else {
+                    self.state.err = Some(response.err);
+                }
+                true
+            }
+            Msg::Details(index) => {
+                if index < self.state.devices.len() {
+                    self.state.err = None;
+                    let fetch_info = FetchDeviceRequest {
+                        id: self.state.devices[index].id.clone(),
+                    };
+                    let body = serde_json::to_value(&fetch_info).unwrap();
+                    let request = Request::post("/fetch_device")
+                        .header("Content-Type", "application/json")
+                        .body(Json(&body))
+                        .expect("Failed to construct fetch device request");
+                    let callback = self.link.callback(
+                        |response: Response<Json<anyhow::Result<FetchDeviceResponse>>>| {
+                            let Json(data) = response.into_body();
+                            if let Ok(result) = data {
+                                Msg::DetialsResponse(result)
+                            } else {
+                                Msg::DetialsResponse(FetchDeviceResponse::err("Unknown error"))
+                            }
+                        },
+                    );
+                    let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                    self.fetch_task = Some(task);
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::DetialsResponse(response) => {
+                self.fetch_task = None;
+                if response.success {
+                    self.props.onselect.emit((response.id, response.name, response.info));
+                    self.route_agent.send(ChangeRoute(AppRoute::DeviceContent.into()));
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -196,12 +278,15 @@ impl HomeComponent {
                 .state
                 .devices
                 .iter()
-                .map(|dev| self.device_html(dev))
+                .enumerate()
+                .map(|(ind, dev)| self.device_html(dev, ind))
         }
     }
 
-    fn device_html(&self, device: &DeviceInfo) -> yew::Html {
-        // TODO - modify_click, detail_click
+    fn device_html(&self, device: &DeviceInfo, index: usize) -> yew::Html {
+        let modify_click = self.link.callback(move |_| Msg::Modify(index));
+        let detials_click = self.link.callback(move |_| Msg::Details(index));
+
         html! {
             <li>
                 {
@@ -210,10 +295,12 @@ impl HomeComponent {
                 }
                 <div>
                     <button
+                        onclick=modify_click
                         disabled=self.fetch_task.is_some()>
                         { "Modify" }
                     </button>
                     <button
+                        onclick=detials_click
                         disabled=self.fetch_task.is_some()>
                         { "Details" }
                     </button>
