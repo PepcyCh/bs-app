@@ -1,0 +1,29 @@
+.container {
+    padding: 20px;
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.error-info {
+    color: red;
+}
+
+.form-item {
+    padding-top: 5px;
+    display: flex;
+}
+
+.form-input {
+    width: 100%;
+}
+
+.form-row-item {
+    flex: 100%;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.form-button {
+    width: 100%;
+}

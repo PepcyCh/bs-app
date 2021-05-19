@@ -5,6 +5,7 @@ use common::{
 };
 use yew::{
     agent::Bridged,
+    classes,
     format::Json,
     html,
     services::{
@@ -13,6 +14,7 @@ use yew::{
     },
     Bridge, Callback, Component, ComponentLink, InputData, Properties,
 };
+use yew_material::{text_inputs::TextFieldType, MatButton, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 pub struct LoginComponent {
@@ -70,7 +72,11 @@ impl Component for LoginComponent {
                 false
             }
             Msg::Login => {
-                if !self.state.mail.is_empty() && !self.state.password.is_empty() {
+                if self.state.mail.is_empty() {
+                    self.state.err = Some("E-mail address is empty".to_string());
+                } else if self.state.password.is_empty() {
+                    self.state.err = Some("Password is empty".to_string());
+                } else {
                     self.state.err = None;
                     let login_info = LoginRequest {
                         mail: self.state.mail.clone(),
@@ -121,41 +127,71 @@ impl Component for LoginComponent {
             .callback(|e: InputData| Msg::EditPassword(e.value));
         let login_click = self.link.callback(|_| Msg::Login);
         html! {
-            <div>
-                <h1>{ "Login" }</h1>
-                <div>
-                    { "Mail: " }
-                    <input
-                        placeholder="Mail"
-                        value=&self.state.mail
-                        oninput=mail_oninput />
-                    { "Password: " }
-                    <input
-                        placeholder="Password"
-                        type="password"
-                        value=&self.state.password
-                        oninput=password_oninput />
-                    <button
-                        onclick=login_click
-                        disabled=self.fetch_task.is_some() >
-                        { "Login" }
-                    </button>
+            <div class="container">
+                <div class="header">
+                    <h2>{ "Login" }</h2>
                 </div>
-                {
-                    if let Some(err) = &self.state.err {
-                        html! {
-                            <div>
-                                <p>{ format!("Failed to login: {}", err) }</p>
-                            </div>
+                <div class="form">
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            label="E-Mail"
+                            helper="email address"
+                            helper_persistent=true
+                            value=self.state.mail.clone()
+                            oninput=mail_oninput />
+                    </div>
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            field_type=TextFieldType::Password
+                            label="Password"
+                            helper="password"
+                            helper_persistent=true
+                            value=self.state.password.clone()
+                            oninput=password_oninput />
+                    </div>
+                    {
+                        if let Some(err) = &self.state.err {
+                            html! {
+                                <div class="error-info">
+                                    <p>{ format!("Failed to login: {}", err) }</p>
+                                </div>
+                            }
+                        } else {
+                            html! {}
                         }
-                    } else {
-                        html! {}
                     }
-                }
-                <RouterAnchor<AppRoute> route={ AppRoute::Register }>
-                    { "Register" }
-                </RouterAnchor<AppRoute>>
+                    <div class="form-item">
+                        <span
+                            onclick=login_click class="form-row-item"
+                            disabled=self.need_to_diable() >
+                            <MatButton
+                                classes=classes!("form-button")
+                                label="Login"
+                                disabled=self.need_to_diable()
+                                raised=true />
+                        </span>
+                        <RouterAnchor<AppRoute>
+                            route={ AppRoute::Register }
+                            classes="form-row-item">
+                            <MatButton
+                                classes=classes!("form-button")
+                                label="Register"
+                                disabled=self.need_to_diable()
+                                raised=true />
+                        </RouterAnchor<AppRoute>>
+                    </div>
+                </div>
             </div>
         }
+    }
+}
+
+impl LoginComponent {
+    fn need_to_diable(&self) -> bool {
+        self.fetch_task.is_some()
     }
 }

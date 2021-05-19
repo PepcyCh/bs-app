@@ -1,11 +1,22 @@
 use std::rc::Rc;
 
-use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest}, response::{DeviceInfo, ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, SimpleResponse}};
-use yew::{agent::Bridged, Bridge, Callback, Component, ComponentLink, InputData, Properties, format::Json, html, services::{
+use common::{
+    request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest},
+    response::{
+        DeviceInfo, ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, SimpleResponse,
+    },
+};
+use yew::{
+    agent::Bridged,
+    format::Json,
+    html,
+    services::{
         fetch::{FetchTask, Request, Response},
         FetchService,
-    }};
-use yew_router::{prelude::RouteAgent, agent::RouteRequest::ChangeRoute};
+    },
+    Bridge, Callback, Component, ComponentLink, InputData, Properties,
+};
+use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
 use crate::route::AppRoute;
 
@@ -158,7 +169,8 @@ impl Component for HomeComponent {
                             }
                         },
                     );
-                    let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                    let task =
+                        FetchService::fetch(request, callback).expect("Failed to start request");
                     self.fetch_task = Some(task);
                     true
                 } else {
@@ -168,8 +180,11 @@ impl Component for HomeComponent {
             Msg::ModifyResponse(response) => {
                 self.fetch_task = None;
                 if response.success {
-                    self.props.onselect.emit((response.id, response.name, response.info));
-                    self.route_agent.send(ChangeRoute(AppRoute::ModifyDevice.into()));
+                    self.props
+                        .onselect
+                        .emit((response.id, response.name, response.info));
+                    self.route_agent
+                        .send(ChangeRoute(AppRoute::ModifyDevice.into()));
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -196,7 +211,8 @@ impl Component for HomeComponent {
                             }
                         },
                     );
-                    let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                    let task =
+                        FetchService::fetch(request, callback).expect("Failed to start request");
                     self.fetch_task = Some(task);
                     true
                 } else {
@@ -206,8 +222,11 @@ impl Component for HomeComponent {
             Msg::DetialsResponse(response) => {
                 self.fetch_task = None;
                 if response.success {
-                    self.props.onselect.emit((response.id, response.name, response.info));
-                    self.route_agent.send(ChangeRoute(AppRoute::DeviceContent.into()));
+                    self.props
+                        .onselect
+                        .emit((response.id, response.name, response.info));
+                    self.route_agent
+                        .send(ChangeRoute(AppRoute::DeviceContent.into()));
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -252,7 +271,7 @@ impl Component for HomeComponent {
                 <div>
                     { "Add device: " }
                     <input
-                        value=&self.state.create_id,
+                        value=self.state.create_id.clone()
                         oninput=create_oninput />
                     <button
                         onclick=create_click

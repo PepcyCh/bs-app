@@ -1,6 +1,32 @@
-use std::process::Command;
+use anyhow::Result;
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+    process::Command,
+};
 
-fn build_frontend() -> Result<(), String> {
+#[derive(Debug)]
+struct BuildError {
+    info: String,
+}
+
+impl BuildError {
+    fn new<S: ToString>(info: S) -> Self {
+        Self {
+            info: info.to_string(),
+        }
+    }
+}
+
+impl Display for BuildError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Build error, info = {}", self.info)
+    }
+}
+
+impl Error for BuildError {}
+
+fn build_frontend() -> Result<()> {
     eprintln!("Building frontend...");
 
     let status = Command::new("wasm-pack")
@@ -18,22 +44,32 @@ fn build_frontend() -> Result<(), String> {
         .expect("Failed to build frontend");
     eprintln!("Frontend is built");
 
+    let mut frontend_files = [
+        glob::glob("./frontend/static/*.html")?,
+        glob::glob("./frontend/static/*.css")?,
+    ];
+    let frontend_files: Vec<_> = frontend_files
+        .iter_mut()
+        .flatten()
+        .map(|glob_result| glob_result.unwrap())
+        .collect();
+
     let mut copy_option = fs_extra::dir::CopyOptions::new();
     copy_option.overwrite = true;
-    fs_extra::copy_items(&["./frontend/static/index.html"], "./out", &copy_option)
+    fs_extra::copy_items(&frontend_files, "./out", &copy_option)
         .expect("Failed to copy frontend outputs");
 
     if status.success() {
         Ok(())
     } else {
-        Err(format!(
+        Err(BuildError::new(format!(
             "Failed to build frontend. Process exits with {}",
             status
-        ))
+        )))?
     }
 }
 
-fn build_backend() -> Result<(), String> {
+fn build_backend() -> Result<()> {
     eprintln!("Building backend...");
 
     let args = if cfg!(debug_assertions) {
@@ -48,6 +84,18 @@ fn build_backend() -> Result<(), String> {
         .expect("Failed to build backend");
     eprintln!("Backend is built");
 
+    let mut backend_files = [glob::glob("./backend/config/*.toml")?];
+    let backend_files: Vec<_> = backend_files
+        .iter_mut()
+        .flatten()
+        .map(|glob_result| glob_result.unwrap())
+        .collect();
+
+    let mut copy_option = fs_extra::dir::CopyOptions::new();
+    copy_option.overwrite = true;
+    fs_extra::copy_items(&backend_files, "./out", &copy_option)
+        .expect("Failed to copy backend outputs");
+
     let target_dir = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -59,6 +107,7 @@ fn build_backend() -> Result<(), String> {
         "bs-backend"
     };
     let exe_path = format!("./backend/target/{}/{}", target_dir, exe_name);
+
     let mut copy_option = fs_extra::dir::CopyOptions::new();
     copy_option.overwrite = true;
     fs_extra::copy_items(&[exe_path], "./out", &copy_option)
@@ -67,14 +116,14 @@ fn build_backend() -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
-        Err(format!(
+        Err(BuildError::new(format!(
             "Failed to build backend. Process exits with {}",
             status
-        ))
+        )))?
     }
 }
 
-fn main() -> Result<(), String> {
+fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=common/*");
     println!("cargo:rerun-if-changed=frontend/*");
     println!("cargo:rerun-if-changed=backend/*");

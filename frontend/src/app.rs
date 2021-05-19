@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use yew::{agent::Bridged, html, Bridge, Component, ComponentLink};
+use yew_material::{top_app_bar_fixed::MatTopAppBarTitle, MatTopAppBarFixed};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::{
@@ -90,6 +91,13 @@ impl Component for App {
 
         html! {
             <div>
+                <MatTopAppBarFixed>
+                    <MatTopAppBarTitle>
+                        <div class="app-title">
+                            <h1>{ "Device Viewer" }</h1>
+                        </div>
+                    </MatTopAppBarTitle>
+                </MatTopAppBarFixed>
                 <Router<AppRoute, ()> render=Router::render(move |switch: AppRoute| {
                     match switch {
                         AppRoute::Login | AppRoute::Default => html! {
@@ -117,8 +125,7 @@ impl Component for App {
                                 info=device_info.clone() />
                         }
                     }
-                })
-                />
+                }) />
             </div>
         }
     }

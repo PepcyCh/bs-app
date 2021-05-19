@@ -147,11 +147,11 @@ impl Component for ModifyDevice {
                     { format!("ID: {}", &self.state.id) }
                     { "Name: " }
                     <input
-                        value=&self.state.name
+                        value=self.state.name.clone()
                         oninput=name_oninput />
                     { "Infomation:" }
                     <input
-                        value=&self.state.info
+                        value=self.state.info.clone()
                         oninput=info_oninput />
                     <button
                         onclick=save_click

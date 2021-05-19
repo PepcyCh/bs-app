@@ -7,6 +7,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use yew::{
     agent::Bridged,
+    classes,
     format::Json,
     html,
     services::{
@@ -14,6 +15,10 @@ use yew::{
         FetchService,
     },
     Bridge, Callback, Component, ComponentLink, InputData, Properties,
+};
+use yew_material::{
+    text_inputs::{TextFieldType, ValidityState},
+    MatButton, MatTextField,
 };
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
@@ -52,7 +57,7 @@ pub struct Prop {
 lazy_static! {
     static ref MAIL_RE: Regex =
         Regex::new(r"^[0-9a-zA-Z._+-]+@[0-9a-zA-Z-]+\.[0-9a-zA-Z-.]+$").unwrap();
-    static ref NAME_RE: Regex = Regex::new(r"^[0-9a-zA-Z_]{3, 32}$").unwrap();
+    static ref NAME_RE: Regex = Regex::new(r"^[0-9a-zA-Z_]{4, 32}$").unwrap();
     static ref PASSWORD_RE: Regex = Regex::new(r"^[0-9a-zA-Z_]{6, 32}$").unwrap();
 }
 
@@ -154,53 +159,147 @@ impl Component for RegisterComponent {
             .link
             .callback(|e: InputData| Msg::EditPasswordTwice(e.value));
         let register_click = self.link.callback(|_| Msg::Register);
+
+        let mail_validate = MatTextField::validity_transform(|str, _| {
+            if !MAIL_RE.is_match(&str) {
+                let mut state = ValidityState::new();
+                state.set_valid(false).set_bad_input(true);
+                state
+            } else {
+                ValidityState::new()
+            }
+        });
+
+        let name_validate = MatTextField::validity_transform(|str, _| {
+            if !NAME_RE.is_match(&str) {
+                let mut state = ValidityState::new();
+                state.set_valid(false).set_bad_input(true);
+                state
+            } else {
+                ValidityState::new()
+            }
+        });
+
+        let password_validate = MatTextField::validity_transform(|str, _| {
+            if !PASSWORD_RE.is_match(&str) {
+                let mut state = ValidityState::new();
+                state.set_valid(false).set_bad_input(true);
+                state
+            } else {
+                ValidityState::new()
+            }
+        });
+
+        // TODO - yew_material only set validity_transform when view is rendered at the first time
+        // so it's impossible to set a right validation function
+        let password_str = self.state.password.clone();
+        let password2_validate = MatTextField::validity_transform(move |str, _| {
+            if str != password_str {
+                let mut state = ValidityState::new();
+                state.set_valid(false).set_bad_input(true);
+                state
+            } else {
+                ValidityState::new()
+            }
+        });
+
         html! {
-            <div>
-                <h1>{ "Register" }</h1>
-                <div>
-                    { "Mail: " }
-                    <input
-                        placeholder="Mail"
-                        value=&self.state.mail
-                        oninput=mail_oninput />
-                    { "Username: " }
-                    <input
-                        placeholder="Username"
-                        value=&self.state.name
-                        oninput=name_oninput />
-                    { "Password: " }
-                    <input
-                        placeholder="Password"
-                        type="password"
-                        value=&self.state.password
-                        oninput=password_oninput />
-                    { "Password (twice): " }
-                    <input
-                        placeholder="Password"
-                        type="password"
-                        value=&self.state.password_twice
-                        oninput=password2_oninput />
-                    <button
-                        onclick=register_click
-                        disabled=self.fetch_task.is_some() >
-                        { "Register" }
-                    </button>
+            <div class="container">
+                <div class="header">
+                    <h2>{ "Register" }</h2>
                 </div>
-                {
-                    if let Some(err) = &self.state.err {
-                        html! {
-                            <div>
-                                <p>{ format!("Failed to register: {}", err) }</p>
-                            </div>
+                <div class="form">
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            label="E-Mail"
+                            helper="email address"
+                            helper_persistent=true
+                            validity_transform=mail_validate
+                            validation_message="Invalid e-mail address"
+                            value=self.state.mail.clone()
+                            oninput=mail_oninput />
+                    </div>
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            label="Username"
+                            helper="username (4-32 characters, allowed characters: a-zA-Z0-9_)"
+                            helper_persistent=true
+                            validity_transform=name_validate
+                            validation_message=
+                                "Invalid username (4-32 characters, allowed characters: a-zA-Z0-9_)"
+                            value=self.state.name.clone()
+                            oninput=name_oninput />
+                    </div>
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            field_type=TextFieldType::Password
+                            label="Password"
+                            helper="password (6-32 characters, allowed characters: a-zA-Z0-9_)"
+                            helper_persistent=true
+                            validity_transform=password_validate
+                            validation_message=
+                                "Invalid password (6-32 characters, allowed characters: a-zA-Z0-9_)"
+                            value=self.state.password.clone()
+                            oninput=password_oninput />
+                    </div>
+                    <div class="form-item">
+                        <MatTextField
+                            classes=classes!("form-input")
+                            outlined=true
+                            field_type=TextFieldType::Password
+                            label="Password (twice)"
+                            helper="password (must be the same as above)"
+                            helper_persistent=true
+                            validity_transform=password2_validate
+                            validation_message="Password is different from above"
+                            value=self.state.password_twice.clone()
+                            oninput=password2_oninput />
+                    </div>
+                    {
+                        if let Some(err) = &self.state.err {
+                            html! {
+                                <div class="error-info">
+                                    <p>{ format!("Failed to register: {}", err) }</p>
+                                </div>
+                            }
+                        } else {
+                            html! {}
                         }
-                    } else {
-                        html! {}
                     }
-                }
-                <RouterAnchor<AppRoute> route={ AppRoute::Login }>
-                    { "Login" }
-                </RouterAnchor<AppRoute>>
+                    <div class="form-item">
+                        <span
+                            onclick=register_click class="form-row-item"
+                            disabled=self.need_to_diable() >
+                            <MatButton
+                                classes=classes!("form-button")
+                                label="Register"
+                                disabled=self.need_to_diable()
+                                raised=true />
+                        </span>
+                        <RouterAnchor<AppRoute>
+                            route={ AppRoute::Login }
+                            classes="form-row-item">
+                            <MatButton
+                                classes=classes!("form-button")
+                                label="Login"
+                                disabled=self.need_to_diable()
+                                raised=true />
+                        </RouterAnchor<AppRoute>>
+                    </div>
+                </div>
             </div>
         }
+    }
+}
+
+impl RegisterComponent {
+    fn need_to_diable(&self) -> bool {
+        self.fetch_task.is_some()
     }
 }

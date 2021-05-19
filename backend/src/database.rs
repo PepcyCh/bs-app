@@ -113,7 +113,7 @@ impl Database {
         if let Ok(_) = self.users.insert_one(doc.to_owned(), None).await {
             Ok(())
         } else {
-            Err("Unknown error".to_string())
+            Err("Net error".to_string())
         }
     }
 
@@ -123,7 +123,7 @@ impl Database {
         if let Ok(_) = self.messages.insert_one(doc.to_owned(), None).await {
             Ok(())
         } else {
-            Err("Unknown error".to_string())
+            Err("Net error".to_string())
         }
     }
 
@@ -148,7 +148,7 @@ impl Database {
             let serialized_dev = bson::to_bson(&dev).unwrap();
             let doc = serialized_dev.as_document().unwrap();
             if let Err(_) = self.devices.insert_one(doc.to_owned(), None).await {
-                return Err("Unknown error".to_string());
+                return Err("Net error".to_string());
             }
         }
 
@@ -163,7 +163,7 @@ impl Database {
         if let Ok(_) = self.users.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Unknown error".to_string())
+            Err("Net error".to_string())
         }
     }
 
@@ -196,7 +196,7 @@ impl Database {
         if let Ok(_) = self.users.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Unknown error".to_string())
+            Err("Net error".to_string())
         }
     }
 
@@ -221,7 +221,7 @@ impl Database {
         if let Ok(_) = self.devices.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Unknown error".to_string())
+            Err("Net error".to_string())
         }
     }
 

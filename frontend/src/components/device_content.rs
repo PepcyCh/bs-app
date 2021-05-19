@@ -170,12 +170,12 @@ impl Component for DeviceContent {
                     <input
                         placeholder="start time"
                         type="number"
-                        value=&self.state.start_timestamp_str
+                        value=self.state.start_timestamp_str.clone()
                         oninput=start_time_oninput />
                     <input
                         placeholder="end time"
                         type="number"
-                        value=&self.state.end_timestamp_str
+                        value=self.state.end_timestamp_str.clone()
                         oninput=end_time_oninput />
                     <button
                         onclick=fetch_click
