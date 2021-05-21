@@ -178,7 +178,9 @@ impl Database {
         let filter = doc! {
             "mail": info.mail.clone(),
             "devices": {
-                "$elemMatch": info.id.clone()
+                "$elemMatch": {
+                    "$eq": info.id.clone()
+                }
             }
         };
         if let None = self.users.find_one(filter, None).await.unwrap() {
@@ -302,7 +304,8 @@ impl Database {
             "id": info.id.clone(),
         };
         if let None = self.users.find_one(filter, None).await.unwrap() {
-            return Err("Device doesn't exist".to_string());
+            // return Err("Device doesn't exist".to_string());
+            return Ok(vec![]);
         }
 
         let filter = doc! {

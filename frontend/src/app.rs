@@ -6,8 +6,9 @@ use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::{
     components::{
-        device_content::DeviceContent, home::HomeComponent, login::LoginComponent,
-        modify_device::ModifyDevice, register::RegisterComponent,
+        default::DefaultComponent, device_content::DeviceContent, home::HomeComponent,
+        login::LoginComponent, logout_hint::LogoutHint, modify_device::ModifyDevice,
+        register::RegisterComponent,
     },
     route::AppRoute,
 };
@@ -31,6 +32,7 @@ struct State {
 pub enum Msg {
     Nop,
     Login((String, String)),
+    Logout,
     Register,
     SelectDevice((String, String, String)),
 }
@@ -58,6 +60,13 @@ impl Component for App {
                 self.route_agent.send(ChangeRoute(AppRoute::Home.into()));
                 true
             }
+            Msg::Logout => {
+                self.state.is_logged_in = false;
+                self.state.mail = "".to_string();
+                self.state.name = "".to_string();
+                self.route_agent.send(ChangeRoute(AppRoute::Login.into()));
+                true
+            }
             Msg::Register => {
                 self.route_agent.send(ChangeRoute(AppRoute::Login.into()));
                 true
@@ -80,6 +89,7 @@ impl Component for App {
             .link
             .callback(|data: (String, String)| Msg::Login(data));
         let register_callback = self.link.callback(|_| Msg::Register);
+        let logout_callback = self.link.callback(|_| Msg::Logout);
         let select_device_callback = self
             .link
             .callback(|data: (String, String, String)| Msg::SelectDevice(data));
@@ -100,7 +110,10 @@ impl Component for App {
                 </MatTopAppBarFixed>
                 <Router<AppRoute, ()> render=Router::render(move |switch: AppRoute| {
                     match switch {
-                        AppRoute::Login | AppRoute::Default => html! {
+                        AppRoute::Default => html! {
+                            <DefaultComponent />
+                        },
+                        AppRoute::Login => html! {
                             <LoginComponent onlogin=login_callback.clone() />
                         },
                         AppRoute::Register => html! {
@@ -110,19 +123,25 @@ impl Component for App {
                             <HomeComponent
                                 mail=mail.clone()
                                 name=name.clone()
+                                onlogout=logout_callback.clone()
                                 onselect=select_device_callback.clone() />
                         },
                         AppRoute::ModifyDevice => html! {
                             <ModifyDevice
+                                mail=mail.clone()
                                 id=device_id.clone()
                                 name=device_name.clone()
                                 info=device_info.clone() />
                         },
                         AppRoute::DeviceContent => html! {
                             <DeviceContent
+                                mail=mail.clone()
                                 id=device_id.clone()
                                 name=device_name.clone()
                                 info=device_info.clone() />
+                        },
+                        AppRoute::LogoutHint => html! {
+                            <LogoutHint onlogout=logout_callback.clone() />
                         }
                     }
                 }) />

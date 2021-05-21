@@ -14,7 +14,8 @@ use yew::{
         fetch::{FetchTask, Request, Response},
         FetchService,
     },
-    Bridge, Callback, Component, ComponentLink, InputData, Properties,
+    web_sys::HtmlInputElement,
+    Bridge, Callback, Component, ComponentLink, InputData, NodeRef, Properties,
 };
 use yew_material::{
     text_inputs::{TextFieldType, ValidityState},
@@ -28,6 +29,7 @@ pub struct RegisterComponent {
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
+    password_ref: NodeRef,
 }
 
 #[derive(Default)]
@@ -73,6 +75,7 @@ impl Component for RegisterComponent {
             state: State::default(),
             route_agent,
             fetch_task: None,
+            password_ref: NodeRef::default(),
         }
     }
 
@@ -190,14 +193,17 @@ impl Component for RegisterComponent {
             }
         });
 
-        // TODO - yew_material only set validity_transform when view is rendered at the first time
-        // so it's impossible to set a right validation function
-        let password_str = self.state.password.clone();
+        let password_ref = self.password_ref.clone();
         let password2_validate = MatTextField::validity_transform(move |str, _| {
-            if str != password_str {
-                let mut state = ValidityState::new();
-                state.set_valid(false).set_bad_input(true);
-                state
+            if let Some(password_ele) = password_ref.cast::<HtmlInputElement>() {
+                let password = password_ele.value();
+                if str != password {
+                    let mut state = ValidityState::new();
+                    state.set_valid(false).set_bad_input(true);
+                    state
+                } else {
+                    ValidityState::new()
+                }
             } else {
                 ValidityState::new()
             }
@@ -205,10 +211,10 @@ impl Component for RegisterComponent {
 
         html! {
             <div class="container">
-                <div class="header">
-                    <h2>{ "Register" }</h2>
-                </div>
                 <div class="form">
+                    <div class="header">
+                        <h2>{ "Register" }</h2>
+                    </div>
                     <div class="form-item">
                         <MatTextField
                             classes=classes!("form-input")
@@ -246,7 +252,8 @@ impl Component for RegisterComponent {
                             validation_message=
                                 "Invalid password (6-32 characters, allowed characters: a-zA-Z0-9_)"
                             value=self.state.password.clone()
-                            oninput=password_oninput />
+                            oninput=password_oninput
+                            ref=self.password_ref.clone() />
                     </div>
                     <div class="form-item">
                         <MatTextField
@@ -274,12 +281,13 @@ impl Component for RegisterComponent {
                     }
                     <div class="form-item">
                         <span
-                            onclick=register_click class="form-row-item"
-                            disabled=self.need_to_diable() >
+                            onclick=register_click
+                            class="form-row-item"
+                            disabled=self.need_to_disable() >
                             <MatButton
                                 classes=classes!("form-button")
                                 label="Register"
-                                disabled=self.need_to_diable()
+                                disabled=self.need_to_disable()
                                 raised=true />
                         </span>
                         <RouterAnchor<AppRoute>
@@ -288,7 +296,7 @@ impl Component for RegisterComponent {
                             <MatButton
                                 classes=classes!("form-button")
                                 label="Login"
-                                disabled=self.need_to_diable()
+                                disabled=self.need_to_disable()
                                 raised=true />
                         </RouterAnchor<AppRoute>>
                     </div>
@@ -299,7 +307,7 @@ impl Component for RegisterComponent {
 }
 
 impl RegisterComponent {
-    fn need_to_diable(&self) -> bool {
+    fn need_to_disable(&self) -> bool {
         self.fetch_task.is_some()
     }
 }

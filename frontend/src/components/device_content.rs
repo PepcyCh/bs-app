@@ -5,15 +5,20 @@ use common::{
     response::{ErrorResponse, FetchMessageListResponse, MessageInfo},
 };
 use yew::{
+    agent::Bridged,
+    classes,
     format::Json,
     html,
     services::{
         fetch::{FetchTask, Request, Response},
         FetchService,
     },
-    Component, ComponentLink, InputData, Properties,
+    Bridge, Component, ComponentLink, InputData, Properties,
 };
-use yew_router::prelude::*;
+use yew_material::{
+    text_inputs::TextFieldType, MatButton, MatLinearProgress, MatList, MatListItem, MatTextField,
+};
+use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::route::AppRoute;
 
@@ -21,6 +26,7 @@ pub struct DeviceContent {
     link: ComponentLink<Self>,
     props: Prop,
     state: State,
+    route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
 }
 
@@ -32,6 +38,8 @@ struct State {
 }
 
 pub enum Msg {
+    Nop,
+    ToLogin,
     EditStartTime(String),
     EditEndTime(String),
     Fetch,
@@ -40,6 +48,7 @@ pub enum Msg {
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Prop {
+    pub mail: Rc<String>,
     pub id: Rc<String>,
     pub name: Rc<String>,
     pub info: Rc<String>,
@@ -50,6 +59,7 @@ impl Component for DeviceContent {
     type Properties = Prop;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
         let state = State {
             start_timestamp_str: "".to_string(),
             end_timestamp_str: "".to_string(),
@@ -60,24 +70,40 @@ impl Component for DeviceContent {
             link,
             props,
             state,
+            route_agent,
             fetch_task: None,
         };
-        component.update(Msg::Fetch);
+        if component.props.mail.is_empty() {
+            // TODO - check login in a better way
+            component.update(Msg::ToLogin);
+        } else {
+            component.update(Msg::Fetch);
+        }
         component
     }
 
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
+            Msg::Nop => false,
+            Msg::ToLogin => {
+                self.route_agent
+                    .send(ChangeRoute(AppRoute::LogoutHint.into()));
+                true
+            }
             Msg::EditStartTime(start_timestamp_str) => {
+                // yew::services::ConsoleService::log(&format!("start time = {}", &start_timestamp_str));
                 self.state.start_timestamp_str = start_timestamp_str;
                 false
             }
             Msg::EditEndTime(end_timestamp_str) => {
+                // yew::services::ConsoleService::log(&format!("end time = {}", &end_timestamp_str));
                 self.state.end_timestamp_str = end_timestamp_str;
                 false
             }
             Msg::Fetch => {
                 self.state.err = None;
+                // yew::services::ConsoleService::log(&format!("start time = {}, end time = {}",
+                //     &self.state.start_timestamp_str, &self.state.end_timestamp_str));
                 let start_timestamp = self
                     .state
                     .start_timestamp_str
@@ -143,16 +169,18 @@ impl Component for DeviceContent {
         let fetch_click = self.link.callback(|_| Msg::Fetch);
 
         html! {
-            <div>
-                <h1>{ &self.props.name }</h1>
-                <div>
-                    <p>{ format!("ID: {}", &self.props.id) }</p>
-                    <p>{ &self.props.info }</p>
+            <div class="container">
+                <div class="header">
+                    <h2>{ &self.props.name }</h2>
+                </div>
+                <div class="device-info">
+                    <p class="device-id">{ format!("ID: {}", &self.props.id) }</p>
+                    <p class="info">{ &self.props.info }</p>
                 </div>
                 {
                     if let Some(err) = &self.state.err {
                         html! {
-                            <div>
+                            <div class="error-info">
                                 <p>{ format!("Failed to fetch data: {}", err) }</p>
                             </div>
                         }
@@ -160,36 +188,88 @@ impl Component for DeviceContent {
                         html! {}
                     }
                 }
-                <RouterAnchor<AppRoute> route={ AppRoute::Home }>
-                    { "Go back to Home" }
-                </RouterAnchor<AppRoute>>
-                <RouterAnchor<AppRoute> route={ AppRoute::ModifyDevice }>
-                    { "Modify" }
-                </RouterAnchor<AppRoute>>
-                <div>
-                    <input
-                        placeholder="start time"
-                        type="number"
+                <div class="form-item">
+                    <RouterAnchor<AppRoute>
+                        route={ AppRoute::Home }
+                        classes="form-row-item" >
+                        <MatButton
+                            classes=classes!("form-button")
+                            label="Back"
+                            raised=true
+                            disabled=self.need_to_disable() />
+                    </RouterAnchor<AppRoute>>
+                    <RouterAnchor<AppRoute>
+                        route={ AppRoute::ModifyDevice }
+                        classes="form-row-item" >
+                        <MatButton
+                            classes=classes!("form-button")
+                            label="Modify"
+                            raised=true
+                            disabled=self.need_to_disable() />
+                    </RouterAnchor<AppRoute>>
+                    // TODO - custom datetme input
+                    <MatTextField
+                        classes=classes!("form-row-item")
+                        outlined=true
+                        label="Start Time"
+                        field_type=TextFieldType::DatetimeLocal
                         value=self.state.start_timestamp_str.clone()
                         oninput=start_time_oninput />
-                    <input
-                        placeholder="end time"
-                        type="number"
+                    // <input
+                    //     class="form-row-item"
+                    //     type="datetime-local"
+                    //     name="start-time"
+                    //     value=self.state.start_timestamp_str.clone()
+                    //     oninput=start_time_oninput />
+                    //     <div class="fallbackDateTimePicker">
+                    <MatTextField
+                        classes=classes!("form-row-item")
+                        outlined=true
+                        label="End Time"
+                        field_type=TextFieldType::DatetimeLocal
                         value=self.state.end_timestamp_str.clone()
                         oninput=end_time_oninput />
-                    <button
+                    <span
+                        class="form-row-item"
                         onclick=fetch_click
-                        disabled=self.fetch_task.is_some() >
-                        { "Fetch Messages" }
-                    </button>
+                        disabled=self.need_to_disable() >
+                        <MatButton
+                            classes=classes!("form-button")
+                            label="Fetch Messages"
+                            raised=true
+                            disabled=self.need_to_disable() />
+                    </span>
                 </div>
-                <ul>{ self.messages_html() }</ul>
+                { self.fetching_progress() }
+                // TODO - list page
+                <div class="message-list">
+                    <MatList noninteractive=true>
+                        { self.messages_html() }
+                    </MatList>
+                </div>
+                // TODO - message graph
             </div>
         }
     }
 }
 
 impl DeviceContent {
+    fn need_to_disable(&self) -> bool {
+        self.fetch_task.is_some()
+    }
+
+    fn fetching_progress(&self) -> yew::Html {
+        if self.fetch_task.is_some() {
+            html! {
+                <div class="fetching-progress">
+                    <MatLinearProgress indeterminate=true />
+                </div>
+            }
+        } else {
+            html! {}
+        }
+    }
+
     fn messages_html(&self) -> yew::Html {
         html! {
             for self
@@ -202,25 +282,31 @@ impl DeviceContent {
 
     fn message_html(&self, msg: &MessageInfo) -> yew::Html {
         html! {
-            <li>
-                <div>
-                {
-                    if msg.alert {
-                        html! {
-                            <p>{ "ALERT" }</p>
-                        }
-                    } else {
-                        html! {
-                            <p>{ "MESSAGE" } </p>
+            <MatListItem>
+                <div class="message-list-item">
+                    {
+                        if msg.alert {
+                            html! {
+                                // <p class="message-alert">{ "ALERT" }</p>
+                                <span class="material-icons message-alert">
+                                    { "warning" }
+                                </span>
+                            }
+                        } else {
+                            html! {
+                                // <p class="message-normal">{ "MESSAGE" } </p>
+                                <span class="material-icons message-normal">
+                                    { "check_circle" }
+                                </span>
+                            }
                         }
                     }
-                }
+                    <p class="message-info">
+                        { format!("value: {}, location: ({}, {}), time: {}",
+                            msg.value, msg.lng, msg.lat, msg.timestamp) }
+                    </p>
                 </div>
-                {
-                    format!("value: {}, location: ({}, {}), time: {}",
-                        msg.value, msg.lng, msg.lat, msg.timestamp)
-                }
-            </li>
+            </MatListItem>
         }
     }
 }

@@ -9,9 +9,14 @@
     color: red;
 }
 
+.hint-info {
+    color: darkturquoise;
+}
+
 .form-item {
     padding-top: 5px;
     display: flex;
+    flex-direction: row;
 }
 
 .form-input {
@@ -26,4 +31,44 @@
 
 .form-button {
     width: 100%;
+}
+
+.fetching-progress {
+    margin: 1em;
+    width: 100%;
+}
+
+.logout-hint {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+}
+
+.message-alert {
+    color: red;
+}
+
+.message-normal {
+    color: darkturquoise;
+}
+
+.device-list-item .device-name {
+    color: black;
+    font-weight: bold;
+    padding-right: 10px;
+}
+
+.device-list-item .device-id {
+    color: gray;
+    padding-right: 10px;
+}
+
+.device-list-item .device-stat {
+    color: black;
+    padding-right: 10px;
+}
+
+.device-info .device-id {
+    color: gray;
 }

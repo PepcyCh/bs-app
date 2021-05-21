@@ -128,10 +128,10 @@ impl Component for LoginComponent {
         let login_click = self.link.callback(|_| Msg::Login);
         html! {
             <div class="container">
-                <div class="header">
-                    <h2>{ "Login" }</h2>
-                </div>
                 <div class="form">
+                    <div class="header">
+                        <h2>{ "Login" }</h2>
+                    </div>
                     <div class="form-item">
                         <MatTextField
                             classes=classes!("form-input")
@@ -166,12 +166,13 @@ impl Component for LoginComponent {
                     }
                     <div class="form-item">
                         <span
-                            onclick=login_click class="form-row-item"
-                            disabled=self.need_to_diable() >
+                            onclick=login_click
+                            class="form-row-item"
+                            disabled=self.need_to_disable() >
                             <MatButton
                                 classes=classes!("form-button")
                                 label="Login"
-                                disabled=self.need_to_diable()
+                                disabled=self.need_to_disable()
                                 raised=true />
                         </span>
                         <RouterAnchor<AppRoute>
@@ -180,7 +181,7 @@ impl Component for LoginComponent {
                             <MatButton
                                 classes=classes!("form-button")
                                 label="Register"
-                                disabled=self.need_to_diable()
+                                disabled=self.need_to_disable()
                                 raised=true />
                         </RouterAnchor<AppRoute>>
                     </div>
@@ -191,7 +192,7 @@ impl Component for LoginComponent {
 }
 
 impl LoginComponent {
-    fn need_to_diable(&self) -> bool {
+    fn need_to_disable(&self) -> bool {
         self.fetch_task.is_some()
     }
 }

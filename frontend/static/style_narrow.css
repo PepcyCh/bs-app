@@ -1,0 +1,32 @@
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+        width: 85%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .form-item {
+        flex-direction: column;
+    }
+
+    .form-row-item {
+        flex: auto;
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .device-list-item .device-name {
+        padding-right: 1px;
+    }
+
+    .device-list-item .device-id {
+        padding-right: 1px;
+    }
+
+    .device-list-item .device-stat {
+        padding-right: 1px;
+    }
+}

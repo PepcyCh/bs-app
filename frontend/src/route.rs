@@ -12,6 +12,8 @@ pub enum AppRoute {
     ModifyDevice,
     #[to = "/#device_content"]
     DeviceContent,
+    #[to = "/#go_to_login"]
+    LogoutHint,
     #[to = "/"]
     Default,
 }

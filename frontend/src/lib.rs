@@ -3,6 +3,7 @@
 mod app;
 mod components;
 mod route;
+mod utils;
 
 use wasm_bindgen::prelude::*;
 use yew::App;
