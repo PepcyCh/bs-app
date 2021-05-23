@@ -15,9 +15,10 @@ use common::{
 async fn login(info: web::Json<LoginRequest>, db: web::Data<Database>) -> impl Responder {
     let info = info.into_inner();
     match db.login(info).await {
-        Ok((mail, name)) => HttpResponse::Ok().json(LoginResponse {
+        Ok((login_token, mail, name)) => HttpResponse::Ok().json(LoginResponse {
             success: true,
             err: "".to_string(),
+            login_token,
             mail,
             name,
         }),
@@ -34,6 +35,31 @@ async fn register(info: web::Json<RegisterRequest>, db: web::Data<Database>) -> 
             err: "".to_string(),
         }),
         Err(err) => HttpResponse::Ok().json(SimpleResponse::err(err)),
+    }
+}
+
+#[post("/logout")]
+async fn logout(info: web::Json<String>, db: web::Data<Database>) -> impl Responder {
+    let login_token = info.into_inner();
+    match db.logout(&login_token).await {
+        Ok(_) => HttpResponse::Ok().json(SimpleResponse {
+            success: true,
+            err: "".to_string(),
+        }),
+        Err(err) => HttpResponse::Ok().json(SimpleResponse::err(err)),
+    }
+}
+
+#[post("/check_login")]
+async fn check_login(info: web::Json<String>, db: web::Data<Database>) -> impl Responder {
+    let login_token = info.into_inner();
+    if db.check_login(&login_token).await {
+        HttpResponse::Ok().json(SimpleResponse {
+            success: true,
+            err: "".to_string(),
+        })
+    } else {
+        HttpResponse::Ok().json(SimpleResponse::err("Login has expired"))
     }
 }
 
@@ -135,6 +161,7 @@ async fn fetch_message_list(
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(login)
         .service(register)
+        .service(logout)
         .service(create_device)
         .service(remove_device)
         .service(modify_device)

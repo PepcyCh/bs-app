@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use yew::{agent::Bridged, html, Bridge, Component, ComponentLink};
+use serde::{Deserialize, Serialize};
+use yew::{
+    agent::Bridged, format::Json, html, services::StorageService, Bridge, Component, ComponentLink,
+};
 use yew_material::{top_app_bar_fixed::MatTopAppBarTitle, MatTopAppBarFixed};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
@@ -16,11 +19,13 @@ use crate::{
 pub struct App {
     link: ComponentLink<Self>,
     state: State,
+    storage: StorageService,
     route_agent: Box<dyn Bridge<RouteAgent>>,
 }
 
 #[derive(Default)]
 struct State {
+    login_token: String,
     mail: String,
     name: String,
     is_logged_in: bool,
@@ -31,10 +36,19 @@ struct State {
 
 pub enum Msg {
     Nop,
-    Login((String, String)),
+    Login((String, String, String)),
     Logout,
     Register,
     SelectDevice((String, String, String)),
+}
+
+const STORAGE_KEY: &str = "pepcy.device_viewer";
+
+#[derive(Deserialize, Serialize)]
+struct StoredData {
+    login_token: String,
+    mail: String,
+    name: String,
 }
 
 impl Component for App {
@@ -42,10 +56,24 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let storage = StorageService::new(yew::services::storage::Area::Local)
+            .expect("Failed to init storage");
+        let mut state = State::default();
+        if let Json(Ok(StoredData {
+            login_token,
+            mail,
+            name,
+        })) = storage.restore(STORAGE_KEY)
+        {
+            state.login_token = login_token;
+            state.mail = mail;
+            state.name = name;
+        };
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
         Self {
             link,
             state: State::default(),
+            storage,
             route_agent,
         }
     }
@@ -53,8 +81,16 @@ impl Component for App {
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
             Msg::Nop => false,
-            Msg::Login((mail, name)) => {
+            Msg::Login((login_token, mail, name)) => {
+                let data = StoredData {
+                    login_token: login_token.clone(),
+                    mail: mail.clone(),
+                    name: name.clone(),
+                };
+                self.storage.store(STORAGE_KEY, Json(&data));
+
                 self.state.is_logged_in = true;
+                self.state.login_token = login_token;
                 self.state.mail = mail;
                 self.state.name = name;
                 self.route_agent.send(ChangeRoute(AppRoute::Home.into()));
@@ -87,12 +123,14 @@ impl Component for App {
     fn view(&self) -> yew::Html {
         let login_callback = self
             .link
-            .callback(|data: (String, String)| Msg::Login(data));
+            .callback(|data: (String, String, String)| Msg::Login(data));
         let register_callback = self.link.callback(|_| Msg::Register);
         let logout_callback = self.link.callback(|_| Msg::Logout);
         let select_device_callback = self
             .link
             .callback(|data: (String, String, String)| Msg::SelectDevice(data));
+
+        let login_token = Rc::new(self.state.login_token.clone());
         let mail = Rc::new(self.state.mail.clone());
         let name = Rc::new(self.state.name.clone());
         let device_id = Rc::new(self.state.device_id.clone());
@@ -111,7 +149,7 @@ impl Component for App {
                 <Router<AppRoute, ()> render=Router::render(move |switch: AppRoute| {
                     match switch {
                         AppRoute::Default => html! {
-                            <DefaultComponent />
+                            <DefaultComponent login_token=login_token.clone() />
                         },
                         AppRoute::Login => html! {
                             <LoginComponent onlogin=login_callback.clone() />
@@ -121,6 +159,7 @@ impl Component for App {
                         },
                         AppRoute::Home => html! {
                             <HomeComponent
+                                login_token=login_token.clone()
                                 mail=mail.clone()
                                 name=name.clone()
                                 onlogout=logout_callback.clone()
@@ -128,6 +167,7 @@ impl Component for App {
                         },
                         AppRoute::ModifyDevice => html! {
                             <ModifyDevice
+                                login_token=login_token.clone()
                                 mail=mail.clone()
                                 id=device_id.clone()
                                 name=device_name.clone()
@@ -135,6 +175,7 @@ impl Component for App {
                         },
                         AppRoute::DeviceContent => html! {
                             <DeviceContent
+                                login_token=login_token.clone()
                                 mail=mail.clone()
                                 id=device_id.clone()
                                 name=device_name.clone()

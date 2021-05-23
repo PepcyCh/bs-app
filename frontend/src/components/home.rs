@@ -42,6 +42,7 @@ struct State {
 pub enum Msg {
     Nop,
     Logout,
+    LogoutRespone(SimpleResponse),
     ToLogin,
     EditCreateId(String),
     CreateDevice,
@@ -58,6 +59,7 @@ pub enum Msg {
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Prop {
+    pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub name: Rc<String>,
     pub onlogout: Callback<()>,
@@ -77,8 +79,7 @@ impl Component for HomeComponent {
             route_agent,
             fetch_task: None,
         };
-        if component.props.mail.is_empty() {
-            // TODO - check login in a better way
+        if component.props.login_token.is_empty() {
             component.update(Msg::ToLogin);
         } else {
             component.update(Msg::Fetch);
@@ -90,6 +91,28 @@ impl Component for HomeComponent {
         match msg {
             Msg::Nop => false,
             Msg::Logout => {
+                self.state.err = None;
+                let login_token = (*self.props.login_token).clone();
+                let body = serde_json::to_value(login_token).unwrap();
+                let request = Request::post("/logout")
+                    .header("Content-Type", "application/json")
+                    .body(Json(&body))
+                    .expect("Failed to construct logout request");
+                let callback = self.link.callback(
+                    |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
+                        let Json(data) = response.into_body();
+                        if let Ok(result) = data {
+                            Msg::LogoutRespone(result)
+                        } else {
+                            Msg::LogoutRespone(SimpleResponse::err("Unknown error"))
+                        }
+                    },
+                );
+                let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                self.fetch_task = Some(task);
+                true
+            }
+            Msg::LogoutRespone(_) => {
                 self.props.onlogout.emit(());
                 true
             }
@@ -108,6 +131,7 @@ impl Component for HomeComponent {
                 } else {
                     self.state.err = None;
                     let create_info = CreateDeviceRequest {
+                        login_token: (*self.props.login_token).clone(),
                         mail: (*self.props.mail).clone(),
                         id: self.state.create_id.trim().to_string(),
                     };
@@ -137,6 +161,8 @@ impl Component for HomeComponent {
                 if response.success {
                     self.state.err = None;
                     self.update(Msg::Fetch)
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin)
                 } else {
                     self.state.err = Some(response.err);
                     true
@@ -148,6 +174,7 @@ impl Component for HomeComponent {
                 } else {
                     self.state.err = None;
                     let create_info = RemoveDeviceRequest {
+                        login_token: (*self.props.login_token).clone(),
                         mail: (*self.props.mail).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
@@ -177,6 +204,8 @@ impl Component for HomeComponent {
                 if response.success {
                     self.state.err = None;
                     self.update(Msg::Fetch)
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin)
                 } else {
                     self.state.err = Some(response.err);
                     true
@@ -185,6 +214,7 @@ impl Component for HomeComponent {
             Msg::Fetch => {
                 self.state.err = None;
                 let fetch_info = FetchDeviceListRequest {
+                    login_token: (*self.props.login_token).clone(),
                     mail: (*self.props.mail).clone(),
                 };
                 let body = serde_json::to_value(&fetch_info).unwrap();
@@ -211,6 +241,8 @@ impl Component for HomeComponent {
                 if response.success {
                     self.state.err = None;
                     self.state.devices = response.devices;
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -220,6 +252,7 @@ impl Component for HomeComponent {
                 if index < self.state.devices.len() {
                     self.state.err = None;
                     let fetch_info = FetchDeviceRequest {
+                        login_token: (*self.props.login_token).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
                     let body = serde_json::to_value(&fetch_info).unwrap();
@@ -253,6 +286,8 @@ impl Component for HomeComponent {
                         .emit((response.id, response.name, response.info));
                     self.route_agent
                         .send(ChangeRoute(AppRoute::ModifyDevice.into()));
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -262,6 +297,7 @@ impl Component for HomeComponent {
                 if index < self.state.devices.len() {
                     self.state.err = None;
                     let fetch_info = FetchDeviceRequest {
+                        login_token: (*self.props.login_token).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
                     let body = serde_json::to_value(&fetch_info).unwrap();
@@ -295,6 +331,8 @@ impl Component for HomeComponent {
                         .emit((response.id, response.name, response.info));
                     self.route_agent
                         .send(ChangeRoute(AppRoute::DeviceContent.into()));
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(response.err);
                 }
@@ -343,8 +381,8 @@ impl Component for HomeComponent {
                     <MatTextField
                         classes=classes!("form-row-item")
                         outlined=true
-                        label="Device name"
-                        helper="device name to be added"
+                        label="Device ID"
+                        helper="device ID to be added"
                         value=self.state.create_id.clone()
                         oninput=create_oninput />
                     <span

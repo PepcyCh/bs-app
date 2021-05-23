@@ -10,6 +10,7 @@ pub struct SimpleResponse {
 pub struct LoginResponse {
     pub success: bool,
     pub err: String,
+    pub login_token: String,
     pub mail: String,
     pub name: String,
 }

@@ -1,4 +1,5 @@
 use bson::doc;
+use chrono::Utc;
 use common::{
     request::{
         CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest, FetchMessageListRequest,
@@ -17,6 +18,7 @@ pub struct Database {
     users: Collection,
     devices: Collection,
     messages: Collection,
+    login_records: Collection,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -61,23 +63,36 @@ impl Database {
         let users = database.collection("users");
         let devices = database.collection("devices");
         let messages = database.collection("messages");
+        let login_records = database.collection("login_records");
 
         Ok(Self {
             users,
             devices,
             messages,
+            login_records,
         })
     }
 
-    pub async fn login(&self, info: LoginRequest) -> Result<(String, String), String> {
+    pub async fn login(&self, info: LoginRequest) -> Result<(String, String, String), String> {
         let filter = doc! {
             "mail": info.mail
         };
 
         if let Ok(Some(doc)) = self.users.find_one(filter, None).await {
             if let Ok(user) = bson::from_bson::<User>(bson::Bson::Document(doc)) {
-                return if user.password == info.password {
-                    Ok((user.mail, user.name))
+                let hashed_password = blake2_str(info.password.as_bytes());
+                return if user.password == hashed_password {
+                    let login_token = blake2_str(user.mail.as_bytes());
+
+                    let new_record = doc! {
+                        "login_token": login_token.clone(),
+                        "login_time": Utc::now(),
+                    };
+                    if let Ok(_) = self.login_records.insert_one(new_record, None).await {
+                        Ok((login_token, user.mail, user.name))
+                    } else {
+                        Err("Net error".to_string())
+                    }
                 } else {
                     Err("Wrong password".to_string())
                 };
@@ -101,11 +116,12 @@ impl Database {
             return Err("Duplicated username".to_string());
         }
 
+        let hashed_password = blake2_str(info.password.as_bytes());
         let user = User {
             _id: None,
             mail: info.mail,
             name: info.name,
-            password: info.password,
+            password: hashed_password,
             devices: vec![],
         };
         let serialized_user = bson::to_bson(&user).unwrap();
@@ -114,6 +130,26 @@ impl Database {
             Ok(())
         } else {
             Err("Net error".to_string())
+        }
+    }
+
+    pub async fn logout(&self, login_token: &str) -> Result<(), String> {
+        let filter = doc! {
+            "login_token": login_token,
+        };
+        if let Some(_) = self
+            .login_records
+            .find_one(filter.clone(), None)
+            .await
+            .unwrap()
+        {
+            if let Ok(_) = self.login_records.delete_one(filter, None).await {
+                Ok(())
+            } else {
+                Err("Net error".to_string())
+            }
+        } else {
+            Ok(())
         }
     }
 
@@ -128,6 +164,10 @@ impl Database {
     }
 
     pub async fn create_device(&self, info: CreateDeviceRequest) -> Result<(), String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "mail": info.mail.clone(),
         };
@@ -168,6 +208,10 @@ impl Database {
     }
 
     pub async fn remove_device(&self, info: RemoveDeviceRequest) -> Result<(), String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "mail": info.mail.clone(),
         };
@@ -203,6 +247,10 @@ impl Database {
     }
 
     pub async fn modify_device(&self, info: ModifyDeviceRequest) -> Result<(), String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "id": info.id.clone(),
         };
@@ -231,6 +279,10 @@ impl Database {
         &self,
         info: FetchDeviceRequest,
     ) -> Result<(String, String, String), String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "id": info.id
         };
@@ -246,6 +298,10 @@ impl Database {
         &self,
         info: FetchDeviceListRequest,
     ) -> Result<Vec<DeviceInfo>, String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "mail": info.mail.clone(),
         };
@@ -300,6 +356,10 @@ impl Database {
         &self,
         info: FetchMessageListRequest,
     ) -> Result<Vec<MessageInfo>, String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+
         let filter = doc! {
             "id": info.id.clone(),
         };
@@ -333,6 +393,33 @@ impl Database {
 
         Ok(messages)
     }
+
+    const MAX_LOGIN_TIME_SECS: i64 = 3600;
+
+    pub async fn check_login(&self, login_token: &str) -> bool {
+        let filter = doc! {
+            "login_token": login_token
+        };
+        if let Some(record) = self
+            .login_records
+            .find_one(filter.clone(), None)
+            .await
+            .unwrap()
+        {
+            let login_time = record.get_datetime("login_time").unwrap();
+            let now_time = Utc::now();
+            let diff = now_time
+                .naive_local()
+                .signed_duration_since(login_time.naive_local());
+            if diff.num_seconds() > Self::MAX_LOGIN_TIME_SECS {
+                self.login_records.delete_one(filter, None).await.unwrap();
+            } else {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl Message {
@@ -356,4 +443,9 @@ impl Message {
             timestamp,
         }
     }
+}
+
+fn blake2_str(input: &[u8]) -> String {
+    use blake2::{Blake2b, Digest};
+    format!("{:x}", Blake2b::digest(input))
 }

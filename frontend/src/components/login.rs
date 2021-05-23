@@ -3,6 +3,7 @@ use common::{
     request::LoginRequest,
     response::{ErrorResponse, LoginResponse},
 };
+use sha2::{Digest, Sha256};
 use yew::{
     agent::Bridged,
     classes,
@@ -42,7 +43,7 @@ pub enum Msg {
 
 #[derive(Properties, Clone)]
 pub struct Prop {
-    pub onlogin: Callback<(String, String)>,
+    pub onlogin: Callback<(String, String, String)>,
 }
 
 impl Component for LoginComponent {
@@ -78,9 +79,11 @@ impl Component for LoginComponent {
                     self.state.err = Some("Password is empty".to_string());
                 } else {
                     self.state.err = None;
+                    let hashed_password =
+                        format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
                     let login_info = LoginRequest {
                         mail: self.state.mail.clone(),
-                        password: self.state.password.clone(),
+                        password: hashed_password,
                     };
                     let body = serde_json::to_value(&login_info).unwrap();
                     let request = Request::post("/login")
@@ -107,7 +110,9 @@ impl Component for LoginComponent {
                 self.fetch_task = None;
                 if response.success {
                     self.route_agent.send(ChangeRoute(AppRoute::Home.into()));
-                    self.props.onlogin.emit((response.mail, response.name));
+                    self.props
+                        .onlogin
+                        .emit((response.login_token, response.mail, response.name));
                 } else {
                     self.state.err = Some(response.err);
                 }

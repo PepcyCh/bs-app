@@ -15,6 +15,7 @@ pub struct RegisterRequest {
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct CreateDeviceRequest {
+    pub login_token: String,
     /// mail - user mail address
     pub mail: String,
     /// id - device id
@@ -23,6 +24,7 @@ pub struct CreateDeviceRequest {
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct RemoveDeviceRequest {
+    pub login_token: String,
     /// mail - user mail address
     pub mail: String,
     /// id - device id
@@ -31,12 +33,14 @@ pub struct RemoveDeviceRequest {
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct FetchDeviceRequest {
+    pub login_token: String,
     /// id - device id
     pub id: String,
 }
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct ModifyDeviceRequest {
+    pub login_token: String,
     /// id - device id
     pub id: String,
     /// mail - user mail address
@@ -46,12 +50,14 @@ pub struct ModifyDeviceRequest {
 
 #[derive(Default, Deserialize, Serialize)]
 pub struct FetchDeviceListRequest {
+    pub login_token: String,
     /// mail - user mail address
     pub mail: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct FetchMessageListRequest {
+    pub login_token: String,
     /// id - device id
     pub id: String,
     pub start_timestamp: u64,
@@ -61,6 +67,7 @@ pub struct FetchMessageListRequest {
 impl Default for FetchMessageListRequest {
     fn default() -> Self {
         Self {
+            login_token: String::default(),
             id: String::default(),
             start_timestamp: 0,
             end_timestamp: std::u64::MAX,

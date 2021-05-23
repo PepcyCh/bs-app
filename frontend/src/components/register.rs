@@ -5,6 +5,7 @@ use common::{
 };
 use lazy_static::lazy_static;
 use regex::Regex;
+use sha2::{Digest, Sha256};
 use yew::{
     agent::Bridged,
     classes,
@@ -109,10 +110,12 @@ impl Component for RegisterComponent {
                 } else if self.state.password != self.state.password_twice {
                     self.state.err = Some("The 2 passwords are different".to_string());
                 } else {
+                    let hashed_password =
+                        format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
                     let register_info = RegisterRequest {
                         mail: self.state.mail.clone(),
                         name: self.state.name.clone(),
-                        password: self.state.password.clone(),
+                        password: hashed_password,
                     };
                     let body = serde_json::to_value(&register_info).unwrap();
                     let request = Request::post("/register")

@@ -48,6 +48,7 @@ pub enum Msg {
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Prop {
+    pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub id: Rc<String>,
     pub name: Rc<String>,
@@ -73,8 +74,7 @@ impl Component for DeviceContent {
             route_agent,
             fetch_task: None,
         };
-        if component.props.mail.is_empty() {
-            // TODO - check login in a better way
+        if component.props.login_token.is_empty() {
             component.update(Msg::ToLogin);
         } else {
             component.update(Msg::Fetch);
@@ -117,6 +117,7 @@ impl Component for DeviceContent {
                     .or::<()>(Ok(u64::MAX))
                     .unwrap();
                 let fetch_info = FetchMessageListRequest {
+                    login_token: (*self.props.login_token).clone(),
                     id: (*self.props.id).clone(),
                     start_timestamp,
                     end_timestamp,
@@ -144,6 +145,8 @@ impl Component for DeviceContent {
                 self.fetch_task = None;
                 if response.success {
                     self.state.messages = response.messages;
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(response.err);
                 }
