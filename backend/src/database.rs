@@ -46,11 +46,11 @@ pub struct Message {
     _id: Option<bson::oid::ObjectId>,
     id: String,
     info: String,
-    value: u32,
+    value: i32,
     alert: bool,
     lng: f64,
     lat: f64,
-    timestamp: u64,
+    timestamp: i64,
 }
 
 impl Database {
@@ -362,14 +362,6 @@ impl Database {
 
         let filter = doc! {
             "id": info.id.clone(),
-        };
-        if let None = self.users.find_one(filter, None).await.unwrap() {
-            // return Err("Device doesn't exist".to_string());
-            return Ok(vec![]);
-        }
-
-        let filter = doc! {
-            "id": info.id.clone(),
             "timestamp": {
                 "$gte": info.start_timestamp,
                 "$lte": info.end_timestamp,
@@ -382,7 +374,7 @@ impl Database {
             let msg = MessageInfo {
                 id: msg.id,
                 info: msg.info,
-                value: msg.value,
+                value: msg.value as u32,
                 alert: msg.alert,
                 lng: msg.lng,
                 lat: msg.lat,
@@ -426,11 +418,11 @@ impl Message {
     pub fn new(
         id: String,
         info: String,
-        value: u32,
+        value: i32,
         alert: bool,
         lng: f64,
         lat: f64,
-        timestamp: u64,
+        timestamp: i64,
     ) -> Self {
         Self {
             _id: None,

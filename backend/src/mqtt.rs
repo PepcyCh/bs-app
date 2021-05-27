@@ -18,11 +18,11 @@ struct MessageMqtt {
     #[serde(rename = "clientId")]
     id: String,
     info: String,
-    value: u32,
+    value: i32,
     alert: u8,
     lng: f64,
     lat: f64,
-    timestamp: u64,
+    timestamp: i64,
 }
 
 pub fn run_mqtt_subscriber(db: web::Data<Database>) {

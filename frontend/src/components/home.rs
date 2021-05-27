@@ -19,7 +19,7 @@ use yew::{
     },
     Bridge, Callback, Component, ComponentLink, InputData, Properties,
 };
-use yew_material::{MatButton, MatLinearProgress, MatList, MatListItem, MatTextField};
+use yew_material::{MatButton, MatLinearProgress, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
 use crate::route::AppRoute;
@@ -419,9 +419,7 @@ impl Component for HomeComponent {
                 { self.fetching_progress() }
                 // TODO - list page
                 <div class="device-list">
-                    <MatList>
-                        { self.devices_html() }
-                    </MatList>
+                    { self.devices_html() }
                 </div>
             </div>
         }
@@ -462,34 +460,34 @@ impl HomeComponent {
         let remove_click = self.link.callback(move |_| Msg::RemoveDevice(index));
 
         html! {
-            <MatListItem>
-                <div class="device-list-item">
-                    <span class="device-name">{ &device.name }</span>
-                    <span class="device-id">{ &device.id }</span>
-                    <span class="device-stat">
-                        { format!("{} messages ({} are alert)",
-                            device.message_count, device.alert_message_count) }
-                    </span>
+            <div class="device-list-item">
+                <p class="device-name">{ &device.name }</p>
+                <p class="device-id">{ &device.id }</p>
+                <p class="device-stat">
+                    { format!("{} messages ({} are alert)",
+                        device.message_count, device.alert_message_count) }
+                </p>
+                <div class="device-buttons">
                     <span onclick=modify_click disabled=self.need_to_disable()>
                         <MatButton
-                            label=""
+                            label="Edit"
                             icon=Cow::from("edit")
                             disabled=self.need_to_disable() />
                     </span>
                     <span onclick=detials_click disabled=self.need_to_disable()>
                         <MatButton
-                            label=""
+                            label="Details"
                             icon=Cow::from("analytics")
                             disabled=self.need_to_disable() />
                     </span>
                     <span onclick=remove_click disabled=self.need_to_disable()>
                         <MatButton
-                            label=""
+                            label="Delete"
                             icon=Cow::from("delete")
                             disabled=self.need_to_disable() />
                     </span>
                 </div>
-            </MatListItem>
+            </div>
         }
     }
 }

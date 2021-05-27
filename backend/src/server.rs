@@ -162,6 +162,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(login)
         .service(register)
         .service(logout)
+        .service(check_login)
         .service(create_device)
         .service(remove_device)
         .service(modify_device)

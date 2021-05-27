@@ -47,7 +47,7 @@ pub struct MessageInfo {
     pub alert: bool,
     pub lng: f64,
     pub lat: f64,
-    pub timestamp: u64,
+    pub timestamp: i64,
 }
 
 #[derive(Default, Deserialize, Serialize)]

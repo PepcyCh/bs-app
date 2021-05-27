@@ -60,8 +60,8 @@ pub struct FetchMessageListRequest {
     pub login_token: String,
     /// id - device id
     pub id: String,
-    pub start_timestamp: u64,
-    pub end_timestamp: u64,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
 }
 
 impl Default for FetchMessageListRequest {
@@ -70,7 +70,7 @@ impl Default for FetchMessageListRequest {
             login_token: String::default(),
             id: String::default(),
             start_timestamp: 0,
-            end_timestamp: std::u64::MAX,
+            end_timestamp: std::i64::MAX,
         }
     }
 }

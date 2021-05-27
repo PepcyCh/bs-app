@@ -68,11 +68,11 @@ impl Component for App {
             state.login_token = login_token;
             state.mail = mail;
             state.name = name;
-        };
+        }
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
         Self {
             link,
-            state: State::default(),
+            state,
             storage,
             route_agent,
         }

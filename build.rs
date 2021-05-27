@@ -1,30 +1,5 @@
-use anyhow::Result;
-use std::{
-    error::Error,
-    fmt::{Display, Formatter},
-    process::Command,
-};
-
-#[derive(Debug)]
-struct BuildError {
-    info: String,
-}
-
-impl BuildError {
-    fn new<S: ToString>(info: S) -> Self {
-        Self {
-            info: info.to_string(),
-        }
-    }
-}
-
-impl Display for BuildError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Build error, info = {}", self.info)
-    }
-}
-
-impl Error for BuildError {}
+use anyhow::{bail, Result};
+use std::process::Command;
 
 fn build_frontend() -> Result<()> {
     eprintln!("Building frontend...");
@@ -62,10 +37,10 @@ fn build_frontend() -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(BuildError::new(format!(
+        bail!(format!(
             "Failed to build frontend. Process exits with {}",
             status
-        )))?
+        ))
     }
 }
 
@@ -116,10 +91,10 @@ fn build_backend() -> Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(BuildError::new(format!(
+        bail!(format!(
             "Failed to build backend. Process exits with {}",
             status
-        )))?
+        ))
     }
 }
 

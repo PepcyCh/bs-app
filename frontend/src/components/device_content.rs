@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use chrono::{DateTime, TimeZone, Utc};
 use common::{
     request::FetchMessageListRequest,
     response::{ErrorResponse, FetchMessageListResponse, MessageInfo},
@@ -15,9 +16,7 @@ use yew::{
     },
     Bridge, Component, ComponentLink, InputData, Properties,
 };
-use yew_material::{
-    text_inputs::TextFieldType, MatButton, MatLinearProgress, MatList, MatListItem, MatTextField,
-};
+use yew_material::{MatButton, MatLinearProgress};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::route::AppRoute;
@@ -104,18 +103,20 @@ impl Component for DeviceContent {
                 self.state.err = None;
                 // yew::services::ConsoleService::log(&format!("start time = {}, end time = {}",
                 //     &self.state.start_timestamp_str, &self.state.end_timestamp_str));
-                let start_timestamp = self
-                    .state
-                    .start_timestamp_str
-                    .parse::<u64>()
-                    .or::<()>(Ok(0))
-                    .unwrap();
-                let end_timestamp = self
-                    .state
-                    .end_timestamp_str
-                    .parse::<u64>()
-                    .or::<()>(Ok(u64::MAX))
-                    .unwrap();
+                let start_timestamp = if let Ok(datetime) =
+                    DateTime::parse_from_str(&self.state.start_timestamp_str, "%Y-%m-%dT%H:%M")
+                {
+                    datetime.timestamp()
+                } else {
+                    0
+                };
+                let end_timestamp = if let Ok(datetime) =
+                    DateTime::parse_from_str(&self.state.end_timestamp_str, "%Y-%m-%dT%H:%M")
+                {
+                    datetime.timestamp()
+                } else {
+                    std::i64::MAX
+                };
                 let fetch_info = FetchMessageListRequest {
                     login_token: (*self.props.login_token).clone(),
                     id: (*self.props.id).clone(),
@@ -211,25 +212,28 @@ impl Component for DeviceContent {
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
                     // TODO - custom datetme input
-                    <MatTextField
-                        classes=classes!("form-row-item")
-                        outlined=true
-                        label="Start Time"
-                        field_type=TextFieldType::DatetimeLocal
-                        value=self.state.start_timestamp_str.clone()
-                        oninput=start_time_oninput />
-                    // <input
-                    //     class="form-row-item"
-                    //     type="datetime-local"
-                    //     name="start-time"
+                    // <MatTextField
+                    //     classes=classes!("form-row-item")
+                    //     outlined=true
+                    //     label="Start Time"
+                    //     field_type=TextFieldType::DatetimeLocal
                     //     value=self.state.start_timestamp_str.clone()
                     //     oninput=start_time_oninput />
-                    //     <div class="fallbackDateTimePicker">
-                    <MatTextField
-                        classes=classes!("form-row-item")
-                        outlined=true
-                        label="End Time"
-                        field_type=TextFieldType::DatetimeLocal
+                    <input
+                        class="form-row-item"
+                        type="datetime-local"
+                        value=self.state.start_timestamp_str.clone()
+                        oninput=start_time_oninput />
+                    // <MatTextField
+                    //     classes=classes!("form-row-item")
+                    //     outlined=true
+                    //     label="End Time"
+                    //     field_type=TextFieldType::DatetimeLocal
+                    //     value=self.state.end_timestamp_str.clone()
+                    //     oninput=end_time_oninput />
+                    <input
+                        class="form-row-item"
+                        type="datetime-local"
                         value=self.state.end_timestamp_str.clone()
                         oninput=end_time_oninput />
                     <span
@@ -246,9 +250,7 @@ impl Component for DeviceContent {
                 { self.fetching_progress() }
                 // TODO - list page
                 <div class="message-list">
-                    <MatList noninteractive=true>
-                        { self.messages_html() }
-                    </MatList>
+                    { self.messages_html() }
                 </div>
                 // TODO - message graph
             </div>
@@ -284,32 +286,28 @@ impl DeviceContent {
     }
 
     fn message_html(&self, msg: &MessageInfo) -> yew::Html {
+        let time = Utc.timestamp(msg.timestamp / 1000, 0);
         html! {
-            <MatListItem>
-                <div class="message-list-item">
-                    {
-                        if msg.alert {
-                            html! {
-                                // <p class="message-alert">{ "ALERT" }</p>
-                                <span class="material-icons message-alert">
-                                    { "warning" }
-                                </span>
-                            }
-                        } else {
-                            html! {
-                                // <p class="message-normal">{ "MESSAGE" } </p>
-                                <span class="material-icons message-normal">
-                                    { "check_circle" }
-                                </span>
-                            }
+            <div class="message-list-item">
+                {
+                    if msg.alert {
+                        html! {
+                            <div class="material-icons message-alert">
+                                { "warning" }
+                            </div>
+                        }
+                    } else {
+                        html! {
+                            <div class="material-icons message-normal">
+                                { "check_circle" }
+                            </div>
                         }
                     }
-                    <p class="message-info">
-                        { format!("value: {}, location: ({}, {}), time: {}",
-                            msg.value, msg.lng, msg.lat, msg.timestamp) }
-                    </p>
-                </div>
-            </MatListItem>
+                }
+                <p>{ format!("value: {}", msg.value) }</p>
+                <p>{ format!("position: ({}, {})", msg.lng, msg.lat) }</p>
+                <p>{ format!("time: {}", time) }</p>
+            </div>
         }
     }
 }
