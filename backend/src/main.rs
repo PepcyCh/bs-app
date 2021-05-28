@@ -23,6 +23,11 @@ async fn mwc_js(web::Path((crate_name, filename)): web::Path<(String, String)>) 
     NamedFile::open(format!("snippets/{}/build/{}", crate_name, filename))
 }
 
+#[get("/snippets/{crate_name}/src/utils/{filename}")]
+async fn comp_js(web::Path((crate_name, filename)): web::Path<(String, String)>) -> impl Responder {
+    NamedFile::open(format!("snippets/{}/src/utils/{}", crate_name, filename))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Begin");
@@ -44,6 +49,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(database.clone())
             .service(wasm)
             .service(mwc_js)
+            .service(comp_js)
             .service(index)
             .configure(server::config)
     })

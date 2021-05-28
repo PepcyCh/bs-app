@@ -64,7 +64,7 @@
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
     transition: 0.3s;
     padding: 10px;
-    margin-top: 15px;
+    margin-top: 5px;
 }
 
 .message-list-item:hover {
@@ -104,4 +104,12 @@
 
 .device-info .device-id {
     color: gray;
+}
+
+.device-charts {
+    margin: 5px;
+}
+
+.device-charts-item {
+    margin: 5px;
 }

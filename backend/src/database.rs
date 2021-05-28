@@ -8,10 +8,7 @@ use common::{
     response::{DeviceInfo, MessageInfo},
 };
 use futures::StreamExt;
-use mongodb::{
-    options::{ClientOptions, ResolverConfig},
-    Client, Collection,
-};
+use mongodb::{Client, Collection, options::{ClientOptions, FindOneOptions, FindOptions, ResolverConfig}};
 use serde::{Deserialize, Serialize};
 
 pub struct Database {
@@ -143,7 +140,7 @@ impl Database {
             .await
             .unwrap()
         {
-            if let Ok(_) = self.login_records.delete_one(filter, None).await {
+            if let Ok(_) = self.login_records.delete_many(filter, None).await {
                 Ok(())
             } else {
                 Err("Net error".to_string())
@@ -367,7 +364,8 @@ impl Database {
                 "$lte": info.end_timestamp,
             }
         };
-        let mut cursor = self.messages.find(filter, None).await.unwrap();
+        let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
+        let mut cursor = self.messages.find(filter, find_options).await.unwrap();
         let mut messages = vec![];
         while let Some(msg) = cursor.next().await {
             let msg: Message = bson::from_bson(bson::Bson::Document(msg.unwrap())).unwrap();
@@ -392,17 +390,19 @@ impl Database {
         let filter = doc! {
             "login_token": login_token
         };
+        // let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
+        let find_options = FindOneOptions::builder().sort(doc! { "login_time": -1 }).build();
         if let Some(record) = self
             .login_records
-            .find_one(filter.clone(), None)
+            .find_one(filter.clone(), find_options)
             .await
             .unwrap()
         {
             let login_time = record.get_datetime("login_time").unwrap();
             let now_time = Utc::now();
             let diff = now_time
-                .naive_local()
-                .signed_duration_since(login_time.naive_local());
+                .naive_utc()
+                .signed_duration_since(login_time.naive_utc());
             if diff.num_seconds() > Self::MAX_LOGIN_TIME_SECS {
                 self.login_records.delete_one(filter, None).await.unwrap();
             } else {

@@ -19,7 +19,7 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
-use crate::route::AppRoute;
+use crate::{route::AppRoute, utils::line_chart::{LineChart, LineChartData}};
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
@@ -248,11 +248,14 @@ impl Component for DeviceContent {
                     </span>
                 </div>
                 { self.fetching_progress() }
+                // TODO - message graph
+                <div class="device-charts">
+                    { self.message_line_chart() }
+                </div>
                 // TODO - list page
                 <div class="message-list">
                     { self.messages_html() }
                 </div>
-                // TODO - message graph
             </div>
         }
     }
@@ -307,6 +310,25 @@ impl DeviceContent {
                 <p>{ format!("value: {}", msg.value) }</p>
                 <p>{ format!("position: ({}, {})", msg.lng, msg.lat) }</p>
                 <p>{ format!("time: {}", time) }</p>
+            </div>
+        }
+    }
+
+    fn message_line_chart(&self) -> yew::Html {
+        let for_upper = self.state.messages.len().min(20);
+        let mut data = Vec::with_capacity(for_upper);
+        for i in 0..for_upper {
+            let item = LineChartData {
+                x: self.state.messages[i].timestamp as f64,
+                y: self.state.messages[i].value as f64,
+            };
+            data.push(item);
+        }
+        let data = Rc::new(data);
+        html! {
+            <div class="device-charts-item">
+                <p class="chart-title">{ "Recent data" }</p>
+                <LineChart data=data.clone() height=400 />
             </div>
         }
     }
