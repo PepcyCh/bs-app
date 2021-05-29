@@ -1,15 +1,6 @@
 use crate::database::Database;
 use actix_web::{post, web, HttpResponse, Responder};
-use common::{
-    request::{
-        CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest, FetchMessageListRequest,
-        LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest,
-    },
-    response::{
-        ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, FetchMessageListResponse,
-        LoginResponse, SimpleResponse,
-    },
-};
+use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest, FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest}, response::{ErrorResponse, FetchDeviceListResponse, FetchDeviceProfileResponse, FetchDeviceResponse, FetchMessageListResponse, LoginResponse, SimpleResponse}};
 
 #[post("/login")]
 async fn login(info: web::Json<LoginRequest>, db: web::Data<Database>) -> impl Responder {
@@ -126,6 +117,24 @@ async fn fetch_device(
     }
 }
 
+#[post("/fetch_device_profile")]
+async fn fetch_device_profile(
+    info: web::Json<FetchDeviceProfileRequest>,
+    db: web::Data<Database>,
+) -> impl Responder {
+    let info = info.into_inner();
+    match db.fetch_device_profile(info).await {
+        Ok(info) => HttpResponse::Ok().json(FetchDeviceProfileResponse {
+            success: true,
+            err: "".to_string(),
+            name: info.name,
+            message_count: info.message_count,
+            alert_message_count: info.alert_message_count,
+        }),
+        Err(err) => HttpResponse::Ok().json(FetchDeviceProfileResponse::err(err)),
+    }
+}
+
 #[post("/fetch_device_list")]
 async fn fetch_device_list(
     info: web::Json<FetchDeviceListRequest>,
@@ -167,6 +176,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(remove_device)
         .service(modify_device)
         .service(fetch_device)
+        .service(fetch_device_profile)
         .service(fetch_device_list)
         .service(fetch_message_list);
 }

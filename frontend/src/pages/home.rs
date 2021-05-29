@@ -22,7 +22,10 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
-use crate::route::AppRoute;
+use crate::{
+    utils::card_div::CardDiv,
+    route::AppRoute,
+};
 
 pub struct HomeComponent {
     link: ComponentLink<Self>,
@@ -417,7 +420,6 @@ impl Component for HomeComponent {
                     </span>
                 </div>
                 { self.fetching_progress() }
-                // TODO - list page
                 <div class="device-list">
                     { self.devices_html() }
                 </div>
@@ -460,7 +462,7 @@ impl HomeComponent {
         let remove_click = self.link.callback(move |_| Msg::RemoveDevice(index));
 
         html! {
-            <div class="device-list-item">
+            <CardDiv classes=classes!("device-list-item")>
                 <p class="device-name">{ &device.name }</p>
                 <p class="device-id">{ &device.id }</p>
                 <p class="device-stat">
@@ -487,7 +489,7 @@ impl HomeComponent {
                             disabled=self.need_to_disable() />
                     </span>
                 </div>
-            </div>
+            </CardDiv>
         }
     }
 }

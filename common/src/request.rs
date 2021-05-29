@@ -55,6 +55,13 @@ pub struct FetchDeviceListRequest {
     pub mail: String,
 }
 
+#[derive(Default, Deserialize, Serialize)]
+pub struct FetchDeviceProfileRequest {
+    pub login_token: String,
+    /// id - device id
+    pub id: String,
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct FetchMessageListRequest {
     pub login_token: String,
@@ -62,6 +69,8 @@ pub struct FetchMessageListRequest {
     pub id: String,
     pub start_timestamp: i64,
     pub end_timestamp: i64,
+    pub first_index: usize,
+    pub limit: usize,
 }
 
 impl Default for FetchMessageListRequest {
@@ -71,6 +80,8 @@ impl Default for FetchMessageListRequest {
             id: String::default(),
             start_timestamp: 0,
             end_timestamp: std::i64::MAX,
+            first_index: 0,
+            limit: 20,
         }
     }
 }

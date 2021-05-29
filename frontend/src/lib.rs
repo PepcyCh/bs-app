@@ -1,7 +1,7 @@
 #![recursion_limit = "512"]
 #[rustfmt::skip::macros(html)]
 mod app;
-mod components;
+mod pages;
 mod route;
 mod utils;
 

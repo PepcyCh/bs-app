@@ -8,7 +8,7 @@ use yew_material::{top_app_bar_fixed::MatTopAppBarTitle, MatTopAppBarFixed};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::{
-    components::{
+    pages::{
         default::DefaultComponent, device_content::DeviceContent, home::HomeComponent,
         login::LoginComponent, logout_hint::LogoutHint, modify_device::ModifyDevice,
         register::RegisterComponent,

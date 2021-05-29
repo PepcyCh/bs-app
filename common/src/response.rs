@@ -40,6 +40,15 @@ pub struct FetchDeviceListResponse {
 }
 
 #[derive(Default, Deserialize, Serialize)]
+pub struct FetchDeviceProfileResponse {
+    pub success: bool,
+    pub err: String,
+    pub name: String,
+    pub message_count: u32,
+    pub alert_message_count: u32,
+}
+
+#[derive(Default, Deserialize, Serialize)]
 pub struct MessageInfo {
     pub id: String,
     pub info: String,
@@ -81,6 +90,7 @@ error_response_impl! {
     SimpleResponse,
     LoginResponse,
     FetchDeviceResponse,
+    FetchDeviceProfileResponse,
     FetchDeviceListResponse,
     FetchMessageListResponse,
 }

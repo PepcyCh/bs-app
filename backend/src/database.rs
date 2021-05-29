@@ -1,12 +1,6 @@
 use bson::doc;
 use chrono::Utc;
-use common::{
-    request::{
-        CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest, FetchMessageListRequest,
-        LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest,
-    },
-    response::{DeviceInfo, MessageInfo},
-};
+use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest, FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest}, response::{DeviceInfo, MessageInfo}};
 use futures::StreamExt;
 use mongodb::{Client, Collection, options::{ClientOptions, FindOneOptions, FindOptions, ResolverConfig}};
 use serde::{Deserialize, Serialize};
@@ -291,6 +285,49 @@ impl Database {
         Ok((device.id, device.name, device.info))
     }
 
+    pub async fn fetch_device_profile(
+        &self,
+        info: FetchDeviceProfileRequest,
+    ) -> Result<DeviceInfo, String> {
+        if !self.check_login(&info.login_token).await {
+            return Err("Login has expired".to_string());
+        }
+        
+        let filter = doc! {
+            "id": info.id.clone()
+        };
+        if let Some(dev) = self.devices.find_one(filter, None).await.unwrap() {
+            let dev: Device = bson::from_bson(bson::Bson::Document(dev)).unwrap();
+
+            let count_filter = doc! {
+                "id": dev.id.clone(),
+            };
+            let message_count = self
+                .messages
+                .count_documents(count_filter, None)
+                .await
+                .unwrap() as u32;
+            let count_filter = doc! {
+                "id": dev.id.clone(),
+                "alert": true,
+            };
+            let alert_message_count = self
+                .messages
+                .count_documents(count_filter, None)
+                .await
+                .unwrap() as u32;
+
+            Ok(DeviceInfo {
+                id: dev.id,
+                name: dev.name,
+                message_count,
+                alert_message_count,
+            })
+        } else {
+            Err("Device doesn't exist".to_string())
+        }
+    }
+
     pub async fn fetch_device_list(
         &self,
         info: FetchDeviceListRequest,
@@ -365,7 +402,7 @@ impl Database {
             }
         };
         let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
-        let mut cursor = self.messages.find(filter, find_options).await.unwrap();
+        let mut cursor = self.messages.find(filter, find_options).await.unwrap().skip(info.first_index);
         let mut messages = vec![];
         while let Some(msg) = cursor.next().await {
             let msg: Message = bson::from_bson(bson::Bson::Document(msg.unwrap())).unwrap();
@@ -379,6 +416,9 @@ impl Database {
                 timestamp: msg.timestamp,
             };
             messages.push(msg);
+            if messages.len() == info.limit {
+                break;
+            }
         }
 
         Ok(messages)

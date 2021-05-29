@@ -1,10 +1,7 @@
 use std::rc::Rc;
 
 use chrono::{DateTime, TimeZone, Utc};
-use common::{
-    request::FetchMessageListRequest,
-    response::{ErrorResponse, FetchMessageListResponse, MessageInfo},
-};
+use common::{request::{FetchDeviceProfileRequest, FetchMessageListRequest}, response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo}};
 use yew::{
     agent::Bridged,
     classes,
@@ -19,7 +16,7 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
-use crate::{route::AppRoute, utils::line_chart::{LineChart, LineChartData}};
+use crate::{route::AppRoute, utils::{line_chart::{LineChart, LineChartData}, paged_list::PagedList, card_div::CardDiv}};
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
@@ -29,9 +26,14 @@ pub struct DeviceContent {
     fetch_task: Option<FetchTask>,
 }
 
+#[derive(Default)]
 struct State {
     start_timestamp_str: String,
     end_timestamp_str: String,
+    message_count: u32,
+    alert_message_count: u32,
+    first_index: usize,
+    limit: usize,
     messages: Vec<MessageInfo>,
     err: Option<String>,
 }
@@ -41,8 +43,11 @@ pub enum Msg {
     ToLogin,
     EditStartTime(String),
     EditEndTime(String),
+    FetchProfile,
+    FetchProfileResponse(FetchDeviceProfileResponse),
     Fetch,
     FetchResponse(FetchMessageListResponse),
+    ChangePage(usize, usize),
 }
 
 #[derive(Properties, Clone, PartialEq)]
@@ -63,8 +68,8 @@ impl Component for DeviceContent {
         let state = State {
             start_timestamp_str: "".to_string(),
             end_timestamp_str: "".to_string(),
-            messages: vec![],
-            err: None,
+            limit: 20,
+            ..Default::default()
         };
         let mut component = Self {
             link,
@@ -76,7 +81,7 @@ impl Component for DeviceContent {
         if component.props.login_token.is_empty() {
             component.update(Msg::ToLogin);
         } else {
-            component.update(Msg::Fetch);
+            component.update(Msg::FetchProfile);
         }
         component
     }
@@ -90,19 +95,52 @@ impl Component for DeviceContent {
                 true
             }
             Msg::EditStartTime(start_timestamp_str) => {
-                // yew::services::ConsoleService::log(&format!("start time = {}", &start_timestamp_str));
                 self.state.start_timestamp_str = start_timestamp_str;
                 false
             }
             Msg::EditEndTime(end_timestamp_str) => {
-                // yew::services::ConsoleService::log(&format!("end time = {}", &end_timestamp_str));
                 self.state.end_timestamp_str = end_timestamp_str;
                 false
             }
+            Msg::FetchProfile => {
+                self.state.err = None;
+                let fetch_info = FetchDeviceProfileRequest {
+                    login_token: (*self.props.login_token).clone(),
+                    id: (*self.props.id).clone(),
+                };
+                let body = serde_json::to_value(&fetch_info).unwrap();
+                let request = Request::post("/fetch_device_profile")
+                    .header("Content-Type", "application/json")
+                    .body(Json(&body))
+                    .expect("Failed to construct fetch device profile request");
+                let callback = self.link.callback(
+                    |response: Response<Json<anyhow::Result<FetchDeviceProfileResponse>>>| {
+                        let Json(data) = response.into_body();
+                        if let Ok(result) = data {
+                            Msg::FetchProfileResponse(result)
+                        } else {
+                            Msg::FetchProfileResponse(FetchDeviceProfileResponse::err("Unknown error"))
+                        }
+                    },
+                );
+                let task = FetchService::fetch(request, callback).expect("Failed to start request");
+                self.fetch_task = Some(task);
+                true
+            }
+            Msg::FetchProfileResponse(response) => {
+                self.fetch_task = None;
+                if response.success {
+                    self.state.message_count = response.message_count;
+                    self.state.alert_message_count = response.alert_message_count;
+                } else if response.err == "Login has expired" {
+                    self.update(Msg::ToLogin);
+                } else {
+                    self.state.err = Some(response.err);
+                }
+                self.update(Msg::Fetch)
+            }
             Msg::Fetch => {
                 self.state.err = None;
-                // yew::services::ConsoleService::log(&format!("start time = {}, end time = {}",
-                //     &self.state.start_timestamp_str, &self.state.end_timestamp_str));
                 let start_timestamp = if let Ok(datetime) =
                     DateTime::parse_from_str(&self.state.start_timestamp_str, "%Y-%m-%dT%H:%M")
                 {
@@ -122,6 +160,8 @@ impl Component for DeviceContent {
                     id: (*self.props.id).clone(),
                     start_timestamp,
                     end_timestamp,
+                    first_index: self.state.first_index,
+                    limit: self.state.limit,
                 };
                 let body = serde_json::to_value(&fetch_info).unwrap();
                 let request = Request::post("/fetch_message_list")
@@ -152,6 +192,11 @@ impl Component for DeviceContent {
                     self.state.err = Some(response.err);
                 }
                 true
+            }
+            Msg::ChangePage(first_index, limit) => {
+                self.state.first_index = first_index;
+                self.state.limit = limit;
+                self.update(Msg::Fetch)
             }
         }
     }
@@ -212,25 +257,11 @@ impl Component for DeviceContent {
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
                     // TODO - custom datetme input
-                    // <MatTextField
-                    //     classes=classes!("form-row-item")
-                    //     outlined=true
-                    //     label="Start Time"
-                    //     field_type=TextFieldType::DatetimeLocal
-                    //     value=self.state.start_timestamp_str.clone()
-                    //     oninput=start_time_oninput />
                     <input
                         class="form-row-item"
                         type="datetime-local"
                         value=self.state.start_timestamp_str.clone()
                         oninput=start_time_oninput />
-                    // <MatTextField
-                    //     classes=classes!("form-row-item")
-                    //     outlined=true
-                    //     label="End Time"
-                    //     field_type=TextFieldType::DatetimeLocal
-                    //     value=self.state.end_timestamp_str.clone()
-                    //     oninput=end_time_oninput />
                     <input
                         class="form-row-item"
                         type="datetime-local"
@@ -248,14 +279,20 @@ impl Component for DeviceContent {
                     </span>
                 </div>
                 { self.fetching_progress() }
+                <p>
+                    { format!("{} messages in total, {} are alert",
+                        self.state.message_count, self.state.alert_message_count) }
+                </p>
                 // TODO - message graph
                 <div class="device-charts">
                     { self.message_line_chart() }
                 </div>
-                // TODO - list page
-                <div class="message-list">
+                <PagedList
+                    page_size=20
+                    items_count=self.state.message_count as usize
+                    disabled=self.need_to_disable() >
                     { self.messages_html() }
-                </div>
+                </PagedList>
             </div>
         }
     }
@@ -291,7 +328,7 @@ impl DeviceContent {
     fn message_html(&self, msg: &MessageInfo) -> yew::Html {
         let time = Utc.timestamp(msg.timestamp / 1000, 0);
         html! {
-            <div class="message-list-item">
+            <CardDiv>
                 {
                     if msg.alert {
                         html! {
@@ -310,7 +347,7 @@ impl DeviceContent {
                 <p>{ format!("value: {}", msg.value) }</p>
                 <p>{ format!("position: ({}, {})", msg.lng, msg.lat) }</p>
                 <p>{ format!("time: {}", time) }</p>
-            </div>
+            </CardDiv>
         }
     }
 
