@@ -73,36 +73,25 @@ impl Component for LoginComponent {
                 false
             }
             Msg::Login => {
+                self.state.err = None;
                 if self.state.mail.is_empty() {
                     self.state.err = Some("E-mail address is empty".to_string());
                 } else if self.state.password.is_empty() {
                     self.state.err = Some("Password is empty".to_string());
                 } else {
-                    self.state.err = None;
                     let hashed_password =
                         format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
-                    let login_info = LoginRequest {
+                    let request = LoginRequest {
                         mail: self.state.mail.clone(),
                         password: hashed_password,
                     };
-                    let body = serde_json::to_value(&login_info).unwrap();
-                    let request = Request::post("/login")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct login request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<LoginResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::LoginResponse(result)
-                            } else {
-                                Msg::LoginResponse(LoginResponse::err("Unknown error"))
-                            }
-                        },
+                    crate::create_fetch_task!(
+                        self,
+                        "/login",
+                        request,
+                        LoginResponse,
+                        LoginResponse
                     );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
                 }
                 true
             }

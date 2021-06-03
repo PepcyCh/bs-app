@@ -9,61 +9,46 @@ use yew::{
         fetch::{FetchTask, Request, Response},
         FetchService,
     },
-    Bridge, Component, Properties,
+    Bridge, Component, ComponentLink, Properties,
 };
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
 use crate::route::AppRoute;
 
 pub struct DefaultComponent {
+    link: ComponentLink<Self>,
     route_agent: Box<dyn Bridge<RouteAgent>>,
+    props: Props,
     fetch_task: Option<FetchTask>,
 }
 
 pub enum Msg {
     Nop,
+    Check,
     CheckResponse(SimpleResponse),
     ToLogin,
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Prop {
+pub struct Props {
     pub login_token: Rc<String>,
 }
 
 impl Component for DefaultComponent {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: yew::ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
-        let fetch_task = if !props.login_token.is_empty() {
-            let login_token = (*props.login_token).clone();
-            let body = serde_json::to_value(login_token).unwrap();
-            let request = Request::post("/check_login")
-                .header("Content-Type", "application/json")
-                .body(Json(&body))
-                .expect("Failed to construct check login request");
-            let callback =
-                link.callback(|response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                    let Json(data) = response.into_body();
-                    if let Ok(result) = data {
-                        Msg::CheckResponse(result)
-                    } else {
-                        Msg::CheckResponse(SimpleResponse::err("Unknown error"))
-                    }
-                });
-            let task = FetchService::fetch(request, callback).expect("Failed to start request");
-            Some(task)
-        } else {
-            None
-        };
-
         let mut component = Self {
+            link,
             route_agent,
-            fetch_task,
+            props,
+            fetch_task: None,
         };
-        if component.fetch_task.is_none() {
+        if !component.props.login_token.is_empty() {
+            component.update(Msg::Check);
+        } else {
             component.update(Msg::ToLogin);
         }
         component
@@ -72,6 +57,11 @@ impl Component for DefaultComponent {
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
             Msg::Nop => false,
+            Msg::Check => {
+                let login_token = (*self.props.login_token).clone();
+                crate::create_fetch_task!(self, "/check_login", login_token, CheckResponse);
+                true
+            }
             Msg::CheckResponse(response) => {
                 if response.success {
                     self.route_agent.send(ChangeRoute(AppRoute::Home.into()));

@@ -31,7 +31,7 @@ use crate::{
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
@@ -62,7 +62,7 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Prop {
+pub struct Props {
     pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub id: Rc<String>,
@@ -72,7 +72,7 @@ pub struct Prop {
 
 impl Component for DeviceContent {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
@@ -115,29 +115,17 @@ impl Component for DeviceContent {
             }
             Msg::FetchProfile => {
                 self.state.err = None;
-                let fetch_info = FetchDeviceProfileRequest {
+                let request = FetchDeviceProfileRequest {
                     login_token: (*self.props.login_token).clone(),
                     id: (*self.props.id).clone(),
                 };
-                let body = serde_json::to_value(&fetch_info).unwrap();
-                let request = Request::post("/fetch_device_profile")
-                    .header("Content-Type", "application/json")
-                    .body(Json(&body))
-                    .expect("Failed to construct fetch device profile request");
-                let callback = self.link.callback(
-                    |response: Response<Json<anyhow::Result<FetchDeviceProfileResponse>>>| {
-                        let Json(data) = response.into_body();
-                        if let Ok(result) = data {
-                            Msg::FetchProfileResponse(result)
-                        } else {
-                            Msg::FetchProfileResponse(FetchDeviceProfileResponse::err(
-                                "Unknown error",
-                            ))
-                        }
-                    },
+                crate::create_fetch_task!(
+                    self,
+                    "/fetch_device_profile",
+                    request,
+                    FetchDeviceProfileResponse,
+                    FetchProfileResponse,
                 );
-                let task = FetchService::fetch(request, callback).expect("Failed to start request");
-                self.fetch_task = Some(task);
                 true
             }
             Msg::FetchProfileResponse(response) => {
@@ -168,7 +156,7 @@ impl Component for DeviceContent {
                 } else {
                     std::i64::MAX
                 };
-                let fetch_info = FetchMessageListRequest {
+                let request = FetchMessageListRequest {
                     login_token: (*self.props.login_token).clone(),
                     id: (*self.props.id).clone(),
                     start_timestamp,
@@ -176,23 +164,13 @@ impl Component for DeviceContent {
                     first_index: self.state.first_index,
                     limit: self.state.limit,
                 };
-                let body = serde_json::to_value(&fetch_info).unwrap();
-                let request = Request::post("/fetch_message_list")
-                    .header("Content-Type", "application/json")
-                    .body(Json(&body))
-                    .expect("Failed to construct fetch message list request");
-                let callback = self.link.callback(
-                    |response: Response<Json<anyhow::Result<FetchMessageListResponse>>>| {
-                        let Json(data) = response.into_body();
-                        if let Ok(result) = data {
-                            Msg::FetchResponse(result)
-                        } else {
-                            Msg::FetchResponse(FetchMessageListResponse::err("Unknown error"))
-                        }
-                    },
+                crate::create_fetch_task!(
+                    self,
+                    "/fetch_message_list",
+                    request,
+                    FetchMessageListResponse,
+                    FetchResponse,
                 );
-                let task = FetchService::fetch(request, callback).expect("Failed to start request");
-                self.fetch_task = Some(task);
                 true
             }
             Msg::FetchResponse(response) => {

@@ -109,30 +109,13 @@ impl Component for ModifyDevice {
                 } else {
                     self.state.err = None;
                     self.state.success_hint = None;
-                    let modify_info = ModifyDeviceRequest {
+                    let request = ModifyDeviceRequest {
                         login_token: (*self.props.login_token).clone(),
                         id: self.state.id.clone(),
                         name: self.state.name.clone(),
                         info: self.state.info.clone(),
                     };
-                    let body = serde_json::to_value(&modify_info).unwrap();
-                    let request = Request::post("/modify_device")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct modify request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::SaveResponse(result)
-                            } else {
-                                Msg::SaveResponse(SimpleResponse::err("Unknown error"))
-                            }
-                        },
-                    );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
+                    crate::create_fetch_task!(self, "/modify_device", request, SaveResponse);
                     true
                 }
             }

@@ -112,29 +112,12 @@ impl Component for RegisterComponent {
                 } else {
                     let hashed_password =
                         format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
-                    let register_info = RegisterRequest {
+                    let request = RegisterRequest {
                         mail: self.state.mail.clone(),
                         name: self.state.name.clone(),
                         password: hashed_password,
                     };
-                    let body = serde_json::to_value(&register_info).unwrap();
-                    let request = Request::post("/register")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct register request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(response) = data {
-                                Msg::RegisterResponse(response)
-                            } else {
-                                Msg::RegisterResponse(SimpleResponse::err("Unknown error"))
-                            }
-                        },
-                    );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
+                    crate::create_fetch_task!(self, "/register", request, RegisterResponse);
                 }
                 true
             }

@@ -23,7 +23,7 @@ impl Component for Map {
     type Message = ();
     type Properties = MapProps;
 
-    fn create(props: Self::Properties, link: yew::ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, _link: yew::ComponentLink<Self>) -> Self {
         Self {
             node: web_sys::window()
                 .unwrap()

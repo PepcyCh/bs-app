@@ -93,23 +93,7 @@ impl Component for HomeComponent {
             Msg::Logout => {
                 self.state.err = None;
                 let login_token = (*self.props.login_token).clone();
-                let body = serde_json::to_value(login_token).unwrap();
-                let request = Request::post("/logout")
-                    .header("Content-Type", "application/json")
-                    .body(Json(&body))
-                    .expect("Failed to construct logout request");
-                let callback = self.link.callback(
-                    |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                        let Json(data) = response.into_body();
-                        if let Ok(result) = data {
-                            Msg::LogoutRespone(result)
-                        } else {
-                            Msg::LogoutRespone(SimpleResponse::err("Unknown error"))
-                        }
-                    },
-                );
-                let task = FetchService::fetch(request, callback).expect("Failed to start request");
-                self.fetch_task = Some(task);
+                crate::create_fetch_task!(self, "/logout", login_token, LogoutRespone);
                 true
             }
             Msg::LogoutRespone(_) => {
@@ -130,29 +114,17 @@ impl Component for HomeComponent {
                     false
                 } else {
                     self.state.err = None;
-                    let create_info = CreateDeviceRequest {
+                    let request = CreateDeviceRequest {
                         login_token: (*self.props.login_token).clone(),
                         mail: (*self.props.mail).clone(),
                         id: self.state.create_id.trim().to_string(),
                     };
-                    let body = serde_json::to_value(&create_info).unwrap();
-                    let request = Request::post("/create_device")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct create device request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::CreateDeviceResponse(result)
-                            } else {
-                                Msg::CreateDeviceResponse(SimpleResponse::err("Unknown error"))
-                            }
-                        },
+                    crate::create_fetch_task!(
+                        self,
+                        "/create_device",
+                        request,
+                        CreateDeviceResponse
                     );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
                     true
                 }
             }
@@ -173,29 +145,12 @@ impl Component for HomeComponent {
                     false
                 } else {
                     self.state.err = None;
-                    let create_info = RemoveDeviceRequest {
+                    let request = RemoveDeviceRequest {
                         login_token: (*self.props.login_token).clone(),
                         mail: (*self.props.mail).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
-                    let body = serde_json::to_value(&create_info).unwrap();
-                    let request = Request::post("/remove_device")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct remove device request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<SimpleResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::RemoveDeviceResponse(result)
-                            } else {
-                                Msg::RemoveDeviceResponse(SimpleResponse::err("Unknown error"))
-                            }
-                        },
-                    );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
+                    crate::create_fetch_task!(self, "remove_device", request, RemoveDeviceResponse);
                     true
                 }
             }
@@ -213,27 +168,17 @@ impl Component for HomeComponent {
             }
             Msg::Fetch => {
                 self.state.err = None;
-                let fetch_info = FetchDeviceListRequest {
+                let request = FetchDeviceListRequest {
                     login_token: (*self.props.login_token).clone(),
                     mail: (*self.props.mail).clone(),
                 };
-                let body = serde_json::to_value(&fetch_info).unwrap();
-                let request = Request::post("/fetch_device_list")
-                    .header("Content-Type", "application/json")
-                    .body(Json(&body))
-                    .expect("Failed to construct fetch device list request");
-                let callback = self.link.callback(
-                    |response: Response<Json<anyhow::Result<FetchDeviceListResponse>>>| {
-                        let Json(data) = response.into_body();
-                        if let Ok(result) = data {
-                            Msg::FetchResponse(result)
-                        } else {
-                            Msg::FetchResponse(FetchDeviceListResponse::err("Unknown error"))
-                        }
-                    },
+                crate::create_fetch_task!(
+                    self,
+                    "/fetch_device_list",
+                    request,
+                    FetchDeviceListResponse,
+                    FetchResponse,
                 );
-                let task = FetchService::fetch(request, callback).expect("Failed to start request");
-                self.fetch_task = Some(task);
                 true
             }
             Msg::FetchResponse(response) => {
@@ -251,28 +196,17 @@ impl Component for HomeComponent {
             Msg::Modify(index) => {
                 if index < self.state.devices.len() {
                     self.state.err = None;
-                    let fetch_info = FetchDeviceRequest {
+                    let request = FetchDeviceRequest {
                         login_token: (*self.props.login_token).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
-                    let body = serde_json::to_value(&fetch_info).unwrap();
-                    let request = Request::post("/fetch_device")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct fetch device request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<FetchDeviceResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::ModifyResponse(result)
-                            } else {
-                                Msg::ModifyResponse(FetchDeviceResponse::err("Unknown error"))
-                            }
-                        },
+                    crate::create_fetch_task!(
+                        self,
+                        "/fetch_device",
+                        request,
+                        FetchDeviceResponse,
+                        ModifyResponse,
                     );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
                     true
                 } else {
                     false
@@ -296,28 +230,17 @@ impl Component for HomeComponent {
             Msg::Details(index) => {
                 if index < self.state.devices.len() {
                     self.state.err = None;
-                    let fetch_info = FetchDeviceRequest {
+                    let request = FetchDeviceRequest {
                         login_token: (*self.props.login_token).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
-                    let body = serde_json::to_value(&fetch_info).unwrap();
-                    let request = Request::post("/fetch_device")
-                        .header("Content-Type", "application/json")
-                        .body(Json(&body))
-                        .expect("Failed to construct fetch device request");
-                    let callback = self.link.callback(
-                        |response: Response<Json<anyhow::Result<FetchDeviceResponse>>>| {
-                            let Json(data) = response.into_body();
-                            if let Ok(result) = data {
-                                Msg::DetialsResponse(result)
-                            } else {
-                                Msg::DetialsResponse(FetchDeviceResponse::err("Unknown error"))
-                            }
-                        },
+                    crate::create_fetch_task!(
+                        self,
+                        "/fetch_device",
+                        request,
+                        FetchDeviceResponse,
+                        DetialsResponse,
                     );
-                    let task =
-                        FetchService::fetch(request, callback).expect("Failed to start request");
-                    self.fetch_task = Some(task);
                     true
                 } else {
                     false
