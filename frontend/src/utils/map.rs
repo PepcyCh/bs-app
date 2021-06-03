@@ -1,30 +1,29 @@
 use std::rc::Rc;
-
 use wasm_bindgen::prelude::*;
 use web_sys::Node;
 use yew::{virtual_dom::VNode, Component, Properties};
 
-pub struct LineChart {
+pub struct Map {
     node: Node,
-    props: LineChartProps,
+    props: MapProps,
 }
 
-pub struct LineChartData {
+pub struct MapPointData {
     pub x: f64,
     pub y: f64,
+    pub value: f64,
 }
 
 #[derive(Properties, Clone)]
-pub struct LineChartProps {
-    pub height: u32,
-    pub data: Rc<Vec<LineChartData>>,
+pub struct MapProps {
+    pub data: Rc<Vec<MapPointData>>,
 }
 
-impl Component for LineChart {
+impl Component for Map {
     type Message = ();
-    type Properties = LineChartProps;
+    type Properties = MapProps;
 
-    fn create(props: Self::Properties, _link: yew::ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, link: yew::ComponentLink<Self>) -> Self {
         Self {
             node: web_sys::window()
                 .unwrap()
@@ -62,10 +61,16 @@ impl Component for LineChart {
                 &JsValue::from_f64(data.y),
             )
             .unwrap();
+            js_sys::Reflect::set(
+                &item_js,
+                &JsValue::from_str("value"),
+                &JsValue::from_f64(data.value),
+            )
+            .unwrap();
             data_js.push(&item_js);
         }
 
-        render_line_chart(&self.node, self.props.height, &data_js);
+        render_map(&self.node, &data_js);
 
         VNode::VRef(self.node.clone())
     }
@@ -73,5 +78,5 @@ impl Component for LineChart {
 
 #[wasm_bindgen(module = "/js/dist/bundle.js")]
 extern "C" {
-    fn render_line_chart(node: &Node, height: u32, data: &JsValue);
+    fn render_map(node: &Node, data: &JsValue);
 }

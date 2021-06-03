@@ -1,8 +1,18 @@
 use bson::doc;
 use chrono::Utc;
-use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest, FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest}, response::{DeviceInfo, MessageInfo}};
+use common::{
+    request::{
+        CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest,
+        FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest,
+        RemoveDeviceRequest,
+    },
+    response::{DeviceInfo, MessageInfo},
+};
 use futures::StreamExt;
-use mongodb::{Client, Collection, options::{ClientOptions, FindOneOptions, FindOptions, ResolverConfig}};
+use mongodb::{
+    options::{ClientOptions, FindOneOptions, FindOptions, ResolverConfig},
+    Client, Collection,
+};
 use serde::{Deserialize, Serialize};
 
 pub struct Database {
@@ -292,7 +302,7 @@ impl Database {
         if !self.check_login(&info.login_token).await {
             return Err("Login has expired".to_string());
         }
-        
+
         let filter = doc! {
             "id": info.id.clone()
         };
@@ -401,8 +411,15 @@ impl Database {
                 "$lte": info.end_timestamp,
             }
         };
-        let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
-        let mut cursor = self.messages.find(filter, find_options).await.unwrap().skip(info.first_index);
+        let find_options = FindOptions::builder()
+            .sort(doc! { "timestamp": -1 })
+            .build();
+        let mut cursor = self
+            .messages
+            .find(filter, find_options)
+            .await
+            .unwrap()
+            .skip(info.first_index);
         let mut messages = vec![];
         while let Some(msg) = cursor.next().await {
             let msg: Message = bson::from_bson(bson::Bson::Document(msg.unwrap())).unwrap();
@@ -431,7 +448,9 @@ impl Database {
             "login_token": login_token
         };
         // let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
-        let find_options = FindOneOptions::builder().sort(doc! { "login_time": -1 }).build();
+        let find_options = FindOneOptions::builder()
+            .sort(doc! { "login_time": -1 })
+            .build();
         if let Some(record) = self
             .login_records
             .find_one(filter.clone(), find_options)

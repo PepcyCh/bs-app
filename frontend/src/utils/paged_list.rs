@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use yew::{Callback, Children, Classes, Component, ComponentLink, Properties, classes, html};
+use yew::{classes, html, Callback, Children, Classes, Component, ComponentLink, Properties};
 use yew_material::MatButton;
 
 pub struct PagedList {
@@ -41,9 +41,7 @@ impl Component for PagedList {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         Self {
             link,
-            state: State {
-                curr_page: 0,
-            },
+            state: State { curr_page: 0 },
             props,
         }
     }
@@ -64,7 +62,9 @@ impl Component for PagedList {
                 self.state.curr_page = self.state.curr_page.max(1) - 1;
             }
         }
-        self.props.on_page_changed.emit((self.state.curr_page, self.props.page_size));
+        self.props
+            .on_page_changed
+            .emit((self.state.curr_page, self.props.page_size));
         true
     }
 
@@ -82,8 +82,8 @@ impl Component for PagedList {
 
         html! {
             <div class=class_str>
-                { self.page_buttons() }
                 { for self.props.children.iter() }
+                { self.page_buttons() }
             </div>
         }
     }
@@ -133,6 +133,7 @@ impl PagedList {
                     classes=classes!("page-button")
                         label="Next Page"
                         icon=Cow::from("arrow_forward_ios")
+                        trailing_icon=true
                         outlined=true />
                 </span>
                 <span
@@ -143,6 +144,7 @@ impl PagedList {
                     classes=classes!("page-button")
                         label="Last Page"
                         icon=Cow::from("last_page")
+                        trailing_icon=true
                         outlined=true />
                 </span>
             </div>

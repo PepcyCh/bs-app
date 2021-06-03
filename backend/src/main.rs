@@ -23,9 +23,9 @@ async fn mwc_js(web::Path((crate_name, filename)): web::Path<(String, String)>) 
     NamedFile::open(format!("snippets/{}/build/{}", crate_name, filename))
 }
 
-#[get("/snippets/{crate_name}/src/utils/{filename}")]
+#[get("/snippets/{crate_name}/js/dist/{filename}")]
 async fn comp_js(web::Path((crate_name, filename)): web::Path<(String, String)>) -> impl Responder {
-    NamedFile::open(format!("snippets/{}/src/utils/{}", crate_name, filename))
+    NamedFile::open(format!("snippets/{}/js/dist/{}", crate_name, filename))
 }
 
 #[actix_web::main]

@@ -22,10 +22,7 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
-use crate::{
-    utils::card_div::CardDiv,
-    route::AppRoute,
-};
+use crate::{route::AppRoute, utils::card_div::CardDiv};
 
 pub struct HomeComponent {
     link: ComponentLink<Self>,

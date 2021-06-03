@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use chrono::{DateTime, TimeZone, Utc};
-use common::{request::{FetchDeviceProfileRequest, FetchMessageListRequest}, response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo}};
+use common::{
+    request::{FetchDeviceProfileRequest, FetchMessageListRequest},
+    response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo},
+};
 use yew::{
     agent::Bridged,
     classes,
@@ -16,7 +19,15 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
-use crate::{route::AppRoute, utils::{line_chart::{LineChart, LineChartData}, paged_list::PagedList, card_div::CardDiv}};
+use crate::{
+    route::AppRoute,
+    utils::{
+        card_div::CardDiv,
+        line_chart::{LineChart, LineChartData},
+        map::{Map, MapPointData},
+        paged_list::PagedList,
+    },
+};
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
@@ -119,7 +130,9 @@ impl Component for DeviceContent {
                         if let Ok(result) = data {
                             Msg::FetchProfileResponse(result)
                         } else {
-                            Msg::FetchProfileResponse(FetchDeviceProfileResponse::err("Unknown error"))
+                            Msg::FetchProfileResponse(FetchDeviceProfileResponse::err(
+                                "Unknown error",
+                            ))
                         }
                     },
                 );
@@ -216,6 +229,9 @@ impl Component for DeviceContent {
             .callback(|e: InputData| Msg::EditStartTime(e.value));
         let end_time_oninput = self.link.callback(|e: InputData| Msg::EditEndTime(e.value));
         let fetch_click = self.link.callback(|_| Msg::Fetch);
+        let list_on_page_changed = self
+            .link
+            .callback(|data: (usize, usize)| Msg::ChangePage(data.0, data.1));
 
         html! {
             <div class="container">
@@ -256,7 +272,7 @@ impl Component for DeviceContent {
                             raised=true
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
-                    // TODO - custom datetme input
+                    // TODO - custom datetme input ?
                     <input
                         class="form-row-item"
                         type="datetime-local"
@@ -283,14 +299,17 @@ impl Component for DeviceContent {
                     { format!("{} messages in total, {} are alert",
                         self.state.message_count, self.state.alert_message_count) }
                 </p>
-                // TODO - message graph
+                <div class="device-map">
+                    { self.message_map() }
+                </div>
                 <div class="device-charts">
                     { self.message_line_chart() }
                 </div>
                 <PagedList
                     page_size=20
                     items_count=self.state.message_count as usize
-                    disabled=self.need_to_disable() >
+                    disabled=self.need_to_disable()
+                    on_page_changed=list_on_page_changed >
                     { self.messages_html() }
                 </PagedList>
             </div>
@@ -364,8 +383,26 @@ impl DeviceContent {
         let data = Rc::new(data);
         html! {
             <div class="device-charts-item">
-                <p class="chart-title">{ "Recent data" }</p>
                 <LineChart data=data.clone() height=400 />
+            </div>
+        }
+    }
+
+    fn message_map(&self) -> yew::Html {
+        let data: Vec<_> = self
+            .state
+            .messages
+            .iter()
+            .map(|msg| MapPointData {
+                x: msg.lng as f64,
+                y: msg.lat as f64,
+                value: msg.value as f64,
+            })
+            .collect();
+        let data = Rc::new(data);
+        html! {
+            <div class="device-map-item">
+                <Map data=data.clone() />
             </div>
         }
     }

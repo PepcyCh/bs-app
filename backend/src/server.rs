@@ -1,6 +1,16 @@
 use crate::database::Database;
 use actix_web::{post, web, HttpResponse, Responder};
-use common::{request::{CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest, FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest, RemoveDeviceRequest}, response::{ErrorResponse, FetchDeviceListResponse, FetchDeviceProfileResponse, FetchDeviceResponse, FetchMessageListResponse, LoginResponse, SimpleResponse}};
+use common::{
+    request::{
+        CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest,
+        FetchMessageListRequest, LoginRequest, ModifyDeviceRequest, RegisterRequest,
+        RemoveDeviceRequest,
+    },
+    response::{
+        ErrorResponse, FetchDeviceListResponse, FetchDeviceProfileResponse, FetchDeviceResponse,
+        FetchMessageListResponse, LoginResponse, SimpleResponse,
+    },
+};
 
 #[post("/login")]
 async fn login(info: web::Json<LoginRequest>, db: web::Data<Database>) -> impl Responder {

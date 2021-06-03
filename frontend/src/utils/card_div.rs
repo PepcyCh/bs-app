@@ -1,4 +1,4 @@
-use yew::{Callback, Children, Classes, Component, Properties, html};
+use yew::{html, Callback, Children, Classes, Component, Properties};
 
 pub struct CardDiv {
     props: CardDivProps,
@@ -19,12 +19,10 @@ impl Component for CardDiv {
     type Properties = CardDivProps;
 
     fn create(props: Self::Properties, _link: yew::ComponentLink<Self>) -> Self {
-        Self {
-            props,
-        }
+        Self { props }
     }
 
-    fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
+    fn update(&mut self, _msg: Self::Message) -> yew::ShouldRender {
         false
     }
 
