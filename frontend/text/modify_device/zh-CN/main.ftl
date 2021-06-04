@@ -1,0 +1,15 @@
+header = 编辑设备信息
+id-label = 设备 ID
+name-label = 设备名称
+name-hint = 设备名称（4-32 个字符，且仅允许以下字符：a-zA-Z0-9_ 与空格）
+name-inv = 设备名称不合要求（4-32 个字符，且仅允许以下字符：a-zA-Z0-9_ 与空格）
+desc-label = 设备描述
+desc-hint = 设备描述（至多 256 个字符）
+success-info = 已成功修改设备信息
+error-label = 修改失败：{ $details }
+error-net = 网络错误
+error-unknown = 未知错误
+error-no-device = 该设备不存在
+error-name = 设备名称不合要求
+button-save = 保存
+button-home = 返回主页

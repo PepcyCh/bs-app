@@ -54,14 +54,15 @@ async fn logout(info: web::Json<String>, db: web::Data<Database>) -> impl Respon
 #[post("/check_login")]
 async fn check_login(info: web::Json<String>, db: web::Data<Database>) -> impl Responder {
     let login_token = info.into_inner();
-    if db.check_login(&login_token).await {
-        HttpResponse::Ok().json(SimpleResponse {
-            success: true,
-            err: "".to_string(),
-        })
-    } else {
-        HttpResponse::Ok().json(SimpleResponse::err("Login has expired"))
+    if let Ok(res) = db.check_login(&login_token).await {
+        if res {
+            return HttpResponse::Ok().json(SimpleResponse {
+                success: true,
+                err: "".to_string(),
+            })
+        }
     }
+    HttpResponse::Ok().json(SimpleResponse::err("Login has expired"))
 }
 
 #[post("/create_device")]

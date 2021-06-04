@@ -1,9 +1,9 @@
-use crate::route::AppRoute;
+use crate::{fluent, route::AppRoute};
 use common::{
     request::RegisterRequest,
     response::{ErrorResponse, SimpleResponse},
 };
-use fluent_templates::LanguageIdentifier;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use lazy_static::lazy_static;
 use regex::Regex;
 use sha2::{Digest, Sha256};
@@ -24,6 +24,14 @@ use yew_material::{
     MatButton, MatTextField,
 };
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
+
+static_loader! {
+    static LOCALES = {
+        locales: "./text/register",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct RegisterComponent {
     link: ComponentLink<Self>,
@@ -104,13 +112,13 @@ impl Component for RegisterComponent {
             Msg::Register => {
                 self.state.err = None;
                 if !MAIL_RE.is_match(&self.state.mail) {
-                    self.state.err = Some("Invalid mail address".to_string());
+                    self.state.err = Some(fluent!(self.props.lang_id, "error-email"));
                 } else if !NAME_RE.is_match(&self.state.name) {
-                    self.state.err = Some("Invalid username".to_string());
+                    self.state.err = Some(fluent!(self.props.lang_id, "error-username"));
                 } else if !PASSWORD_RE.is_match(&self.state.password) {
-                    self.state.err = Some("Invalid password".to_string());
+                    self.state.err = Some(fluent!(self.props.lang_id, "error-password"));
                 } else if self.state.password != self.state.password_twice {
-                    self.state.err = Some("The 2 passwords are different".to_string());
+                    self.state.err = Some(fluent!(self.props.lang_id, "error-password2"));
                 } else {
                     let hashed_password =
                         format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
@@ -129,15 +137,16 @@ impl Component for RegisterComponent {
                     self.route_agent.send(ChangeRoute(AppRoute::Login.into()));
                     self.props.onregister.emit(());
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> yew::ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
+        self.props = props;
+        true
     }
 
     fn view(&self) -> yew::Html {
@@ -201,17 +210,17 @@ impl Component for RegisterComponent {
             <div class="container">
                 <div class="form">
                     <div class="header">
-                        <h2>{ "Register" }</h2>
+                        <h2>{ fluent!(self.props.lang_id, "header") }</h2>
                     </div>
                     <div class="form-item">
                         <MatTextField
                             classes=classes!("form-input")
                             outlined=true
-                            label="E-Mail"
-                            helper="email address"
+                            label=fluent!(self.props.lang_id, "email-label")
+                            helper=fluent!(self.props.lang_id, "email-hint")
                             helper_persistent=true
                             validity_transform=mail_validate
-                            validation_message="Invalid e-mail address"
+                            validation_message=fluent!(self.props.lang_id, "email-inv")
                             value=self.state.mail.clone()
                             oninput=mail_oninput />
                     </div>
@@ -219,12 +228,11 @@ impl Component for RegisterComponent {
                         <MatTextField
                             classes=classes!("form-input")
                             outlined=true
-                            label="Username"
-                            helper="username (4-32 characters, allowed characters: a-zA-Z0-9_)"
+                            label=fluent!(self.props.lang_id, "username-label")
+                            helper=fluent!(self.props.lang_id, "username-hint")
                             helper_persistent=true
                             validity_transform=name_validate
-                            validation_message=
-                                "Invalid username (4-32 characters, allowed characters: a-zA-Z0-9_)"
+                            validation_message=fluent!(self.props.lang_id, "username-inv")
                             value=self.state.name.clone()
                             oninput=name_oninput />
                     </div>
@@ -233,12 +241,11 @@ impl Component for RegisterComponent {
                             classes=classes!("form-input")
                             outlined=true
                             field_type=TextFieldType::Password
-                            label="Password"
-                            helper="password (6-32 characters, allowed characters: a-zA-Z0-9_)"
+                            label=fluent!(self.props.lang_id, "password-label")
+                            helper=fluent!(self.props.lang_id, "password-hint")
                             helper_persistent=true
                             validity_transform=password_validate
-                            validation_message=
-                                "Invalid password (6-32 characters, allowed characters: a-zA-Z0-9_)"
+                            validation_message=fluent!(self.props.lang_id, "password-inv")
                             value=self.state.password.clone()
                             oninput=password_oninput
                             ref=self.password_ref.clone() />
@@ -248,11 +255,11 @@ impl Component for RegisterComponent {
                             classes=classes!("form-input")
                             outlined=true
                             field_type=TextFieldType::Password
-                            label="Password (twice)"
-                            helper="password (must be the same as above)"
+                            label=fluent!(self.props.lang_id, "password2-label")
+                            helper=fluent!(self.props.lang_id, "password2-hint")
                             helper_persistent=true
                             validity_transform=password2_validate
-                            validation_message="Password is different from above"
+                            validation_message=fluent!(self.props.lang_id, "password2-inv")
                             value=self.state.password_twice.clone()
                             oninput=password2_oninput />
                     </div>
@@ -260,7 +267,8 @@ impl Component for RegisterComponent {
                         if let Some(err) = &self.state.err {
                             html! {
                                 <div class="error-info">
-                                    <p>{ format!("Failed to register: {}", err) }</p>
+                                    <p>{ fluent!(self.props.lang_id, "error-label",
+                                        { "details" => err.as_str() }) }</p>
                                 </div>
                             }
                         } else {
@@ -274,7 +282,7 @@ impl Component for RegisterComponent {
                             disabled=self.need_to_disable() >
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Register"
+                                label=fluent!(self.props.lang_id, "button-register")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </span>
@@ -283,7 +291,7 @@ impl Component for RegisterComponent {
                             classes="form-row-item">
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Login"
+                                label=fluent!(self.props.lang_id, "button-login")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </RouterAnchor<AppRoute>>

@@ -1,0 +1,17 @@
+header = 设备 - { $name }
+device-id = ID：{ $id }
+device-info = { $info }
+button-back = 返回
+button-edit = 编辑
+button-fetch = 搜索
+device-stat = 共 { $total } 条消息，其中 { $alert } 条存在警告
+map-label = 发送地点
+chart-label = 发送时间
+msg-title = 详细数据
+msg-value = 值：{ $value }
+msg-position = 地点：({ $lng }, { $lat })
+msg-time = 时间：{ $time }
+error-label = 获取数据失败：{ $details }
+error-net = 网络错误
+error-unknown = 未知错误
+error-no-device = 该设备不存在

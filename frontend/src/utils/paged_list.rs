@@ -1,7 +1,16 @@
+use crate::fluent;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use std::borrow::Cow;
-
 use yew::{classes, html, Callback, Children, Classes, Component, ComponentLink, Properties};
 use yew_material::MatButton;
+
+static_loader! {
+    static LOCALES = {
+        locales: "./text/paged_list",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct PagedList {
     link: ComponentLink<Self>,
@@ -15,6 +24,7 @@ struct State {
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct PagedListProps {
+    pub lang_id: LanguageIdentifier,
     #[prop_or_default]
     pub classes: Classes,
     pub page_size: usize,
@@ -109,7 +119,7 @@ impl PagedList {
                     disabled=prev_disabled >
                     <MatButton
                         classes=classes!("page-button")
-                        label="First Page"
+                        label=fluent!(self.props.lang_id, "first-page")
                         icon=Cow::from("first_page")
                         outlined=true />
                 </span>
@@ -119,12 +129,15 @@ impl PagedList {
                     disabled=prev_disabled >
                     <MatButton
                     classes=classes!("page-button")
-                        label="Previous Page"
+                        label=fluent!(self.props.lang_id, "prev-page")
                         icon=Cow::from("arrow_back_ios")
                         outlined=true />
                 </span>
                 <span class="page-buttons-item">
-                    { format!("{}/{}", self.state.curr_page + 1, page_count) }
+                    { fluent!(self.props.lang_id, "page-hint", {
+                        "curr" => self.state.curr_page + 1,
+                        "total" => page_count,
+                    }) }
                 </span>
                 <span
                     class="page-buttons-item"
@@ -132,7 +145,7 @@ impl PagedList {
                     disabled=next_disabled >
                     <MatButton
                     classes=classes!("page-button")
-                        label="Next Page"
+                        label=fluent!(self.props.lang_id, "next-page")
                         icon=Cow::from("arrow_forward_ios")
                         trailing_icon=true
                         outlined=true />
@@ -143,7 +156,7 @@ impl PagedList {
                     disabled=next_disabled >
                     <MatButton
                     classes=classes!("page-button")
-                        label="Last Page"
+                        label=fluent!(self.props.lang_id, "last-page")
                         icon=Cow::from("last_page")
                         trailing_icon=true
                         outlined=true />

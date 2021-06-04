@@ -9,5 +9,6 @@ error-password-empty = Password must not be empty
 error-no-user = No such user
 error-wrong-password = Password is wrong
 error-net = Net error
+error-unknown = Unknown error
 btn-login = Login
 btn-register = Register

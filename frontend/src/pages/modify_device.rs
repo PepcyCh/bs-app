@@ -1,12 +1,12 @@
-use std::rc::Rc;
-
+use crate::{fluent, route::AppRoute};
 use common::{
     request::ModifyDeviceRequest,
     response::{ErrorResponse, SimpleResponse},
 };
-use fluent_templates::LanguageIdentifier;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::rc::Rc;
 use yew::{
     agent::Bridged,
     classes,
@@ -21,7 +21,13 @@ use yew::{
 use yew_material::{text_inputs::ValidityState, MatButton, MatTextArea, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
-use crate::route::AppRoute;
+static_loader! {
+    static LOCALES = {
+        locales: "./text/modify_device",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct ModifyDevice {
     link: ComponentLink<Self>,
@@ -106,7 +112,7 @@ impl Component for ModifyDevice {
             }
             Msg::Save => {
                 if !NAME_RE.is_match(&self.state.name) {
-                    self.state.err = Some("Invalid device name".to_string());
+                    self.state.err = Some(fluent!(self.props.lang_id, "error-name"));
                     true
                 } else {
                     self.state.err = None;
@@ -124,20 +130,20 @@ impl Component for ModifyDevice {
             Msg::SaveResponse(response) => {
                 self.fetch_task = None;
                 if response.success {
-                    self.state.success_hint =
-                        Some("Device info is modified successfully".to_string());
+                    self.state.success_hint = Some(fluent!(self.props.lang_id, "success-info"));
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> yew::ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
+        self.props = props;
+        true
     }
 
     fn view(&self) -> yew::Html {
@@ -158,14 +164,14 @@ impl Component for ModifyDevice {
         html! {
             <div class="container">
                 <div class="header">
-                    <h2>{ "Modify Device Info" }</h2>
+                    <h2>{ fluent!(self.props.lang_id, "header") }</h2>
                 </div>
                 <div class="form">
                     <div class="form-item">
                         <MatTextField
                             classes=classes!("form-input")
                             outlined=true
-                            label="Device ID"
+                            label=fluent!(self.props.lang_id, "id-label")
                             value=self.state.id.clone()
                             disabled=true />
                     </div>
@@ -173,12 +179,11 @@ impl Component for ModifyDevice {
                         <MatTextField
                             classes=classes!("form-input")
                             outlined=true
-                            label="Device Name"
-                            helper="device name (4-32 characters, allowed characters: a-zA-Z0-9_ and space)"
+                            label=fluent!(self.props.lang_id, "name-label")
+                            helper=fluent!(self.props.lang_id, "name-hint")
                             helper_persistent=true
                             validity_transform=name_validate
-                            validation_message=
-                                "Invalid device name (4-32 characters, allowed characters: a-zA-Z0-9_ and space)"
+                            validation_message=fluent!(self.props.lang_id, "name-inv")
                             value=self.state.name.clone()
                             oninput=name_oninput />
                     </div>
@@ -186,8 +191,8 @@ impl Component for ModifyDevice {
                         <MatTextArea
                             classes=classes!("form-input")
                             outlined=true
-                            label="Device Description"
-                            helper="device description (at most 256 characters)"
+                            label=fluent!(self.props.lang_id, "desc-label")
+                            helper=fluent!(self.props.lang_id, "name-hint")
                             helper_persistent=true
                             max_length=256
                             value=self.state.info.clone()
@@ -203,7 +208,8 @@ impl Component for ModifyDevice {
                         } else if let Some(err) = &self.state.err {
                             html! {
                                 <div class="error-info">
-                                    <p>{ format!("Failed to modify: {}", err) }</p>
+                                    <p>{ fluent!(self.props.lang_id, "error-label",
+                                        { "details" => err.as_str() } ) }</p>
                                 </div>
                             }
                         } else{
@@ -217,7 +223,7 @@ impl Component for ModifyDevice {
                             disabled=self.need_to_disable() >
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Save"
+                                label=fluent!(self.props.lang_id, "button-save")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </span>
@@ -226,7 +232,7 @@ impl Component for ModifyDevice {
                             classes="form-row-item">
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Go Back to Home"
+                                label=fluent!(self.props.lang_id, "button-home")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </RouterAnchor<AppRoute>>

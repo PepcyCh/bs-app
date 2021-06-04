@@ -1,5 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
-
+use crate::{fluent, route::AppRoute, utils::card_div::CardDiv};
 use common::{
     request::{
         CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceRequest, RemoveDeviceRequest,
@@ -8,7 +7,8 @@ use common::{
         DeviceInfo, ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, SimpleResponse,
     },
 };
-use fluent_templates::LanguageIdentifier;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
+use std::{borrow::Cow, rc::Rc};
 use yew::{
     agent::Bridged,
     classes,
@@ -23,7 +23,13 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::RouteAgent};
 
-use crate::{route::AppRoute, utils::card_div::CardDiv};
+static_loader! {
+    static LOCALES = {
+        locales: "./text/home",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct HomeComponent {
     link: ComponentLink<Self>,
@@ -138,7 +144,7 @@ impl Component for HomeComponent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin)
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                     true
                 }
             }
@@ -164,7 +170,7 @@ impl Component for HomeComponent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin)
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                     true
                 }
             }
@@ -191,7 +197,7 @@ impl Component for HomeComponent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
@@ -225,7 +231,7 @@ impl Component for HomeComponent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
@@ -259,7 +265,7 @@ impl Component for HomeComponent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
@@ -286,16 +292,20 @@ impl Component for HomeComponent {
         html! {
             <div class="container">
                 <div class="header">
-                    <h2>{ "Home" }</h2>
+                    <h2>{ fluent!(self.props.lang_id, "header") }</h2>
                 </div>
                 <div class="welcome">
-                    <p>{ format!("Welcome, {}({})!", &self.props.name, &self.props.mail) }</p>
+                    <p>{ fluent!(self.props.lang_id, "welcome", {
+                        "username" => self.props.name.as_str(),
+                        "email" => self.props.mail.as_str(),
+                    }) }</p>
                 </div>
                 {
                     if let Some(err) = &self.state.err {
                         html! {
                             <div class="error-info">
-                                <p>{ format!("Error: {}", err) }</p>
+                                <p>{ fluent!(self.props.lang_id, "error-label",
+                                    { "details" => err.as_str() }) }</p>
                             </div>
                         }
                     } else {
@@ -306,8 +316,8 @@ impl Component for HomeComponent {
                     <MatTextField
                         classes=classes!("form-row-item")
                         outlined=true
-                        label="Device ID"
-                        helper="device ID to be added"
+                        label=fluent!(self.props.lang_id, "id-label")
+                        helper=fluent!(self.props.lang_id, "id-hint")
                         value=self.state.create_id.clone()
                         oninput=create_oninput />
                     <span
@@ -316,7 +326,7 @@ impl Component for HomeComponent {
                         disabled=self.need_to_disable()>
                         <MatButton
                             classes=classes!("form-button")
-                            label="Add Device"
+                            label=fluent!(self.props.lang_id, "button-add")
                             raised=true
                             disabled=self.need_to_disable() />
                     </span>
@@ -326,7 +336,7 @@ impl Component for HomeComponent {
                         disabled=self.need_to_disable()>
                         <MatButton
                             classes=classes!("form-button")
-                            label="Fecth Devices"
+                            label=fluent!(self.props.lang_id, "button-fetch")
                             raised=true
                             disabled=self.need_to_disable() />
                     </span>
@@ -336,7 +346,7 @@ impl Component for HomeComponent {
                         disabled=self.need_to_disable()>
                         <MatButton
                             classes=classes!("logout", "form-button")
-                            label="Logout"
+                            label=fluent!(self.props.lang_id, "button-logout")
                             raised=true
                             disabled=self.need_to_disable() />
                     </span>
@@ -388,25 +398,27 @@ impl HomeComponent {
                 <p class="device-name">{ &device.name }</p>
                 <p class="device-id">{ &device.id }</p>
                 <p class="device-stat">
-                    { format!("{} messages ({} are alert)",
-                        device.message_count, device.alert_message_count) }
+                    { fluent!(self.props.lang_id, "device-stat", {
+                        "total" => device.message_count,
+                        "alert" => device.alert_message_count,
+                    }) }
                 </p>
                 <div class="device-buttons">
                     <span onclick=modify_click disabled=self.need_to_disable()>
                         <MatButton
-                            label="Edit"
+                            label=fluent!(self.props.lang_id, "button-edit")
                             icon=Cow::from("edit")
                             disabled=self.need_to_disable() />
                     </span>
                     <span onclick=detials_click disabled=self.need_to_disable()>
                         <MatButton
-                            label="Details"
+                            label=fluent!(self.props.lang_id, "button-details")
                             icon=Cow::from("analytics")
                             disabled=self.need_to_disable() />
                     </span>
                     <span onclick=remove_click disabled=self.need_to_disable()>
                         <MatButton
-                            label="Delete"
+                            label=fluent!(self.props.lang_id, "button-delete")
                             icon=Cow::from("delete")
                             disabled=self.need_to_disable() />
                     </span>

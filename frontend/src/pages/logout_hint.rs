@@ -1,12 +1,20 @@
+use crate::fluent;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use std::time::Duration;
-
-use fluent_templates::LanguageIdentifier;
 use yew::{
     html,
     services::{timeout::TimeoutTask, TimeoutService},
     Callback, Component, ComponentLink, Properties,
 };
 use yew_material::MatButton;
+
+static_loader! {
+    static LOCALES = {
+        locales: "./text/logout_hint",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct LogoutHint {
     link: ComponentLink<Self>,
@@ -50,8 +58,9 @@ impl Component for LogoutHint {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> yew::ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> yew::ShouldRender {
+        self.props = props;
+        true
     }
 
     fn view(&self) -> yew::Html {
@@ -59,9 +68,9 @@ impl Component for LogoutHint {
         html! {
             <div class="container">
                 <div class="logout-hint">
-                    <p class="error-info">{ "You have not logged in" }</p>
+                    <p class="error-info">{ fluent!(self.props.lang_id, "info") }</p>
                     <span onclick=logout_callback>
-                        <MatButton label="Go to login" raised=true />
+                        <MatButton label=fluent!(self.props.lang_id, "button-label") raised=true />
                     </span>
                 </div>
             </div>

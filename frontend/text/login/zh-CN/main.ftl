@@ -9,5 +9,6 @@ error-password-empty = 密码不能为空
 error-no-user = 用户不存在
 error-wrong-password = 密码错误
 error-net = 网络错误
+error-unknown = 未知错误
 btn-login = 登录
 btn-register = 注册

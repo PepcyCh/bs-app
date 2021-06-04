@@ -1,11 +1,20 @@
-use std::rc::Rc;
-
+use crate::{
+    fluent,
+    route::AppRoute,
+    utils::{
+        card_div::CardDiv,
+        line_chart::{LineChart, LineChartData},
+        map::{Map, MapPointData},
+        paged_list::PagedList,
+    },
+};
 use chrono::{DateTime, TimeZone, Utc};
 use common::{
     request::{FetchDeviceProfileRequest, FetchMessageListRequest},
     response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo},
 };
-use fluent_templates::LanguageIdentifier;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
+use std::rc::Rc;
 use yew::{
     agent::Bridged,
     classes,
@@ -20,15 +29,13 @@ use yew::{
 use yew_material::{MatButton, MatLinearProgress};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
-use crate::{
-    route::AppRoute,
-    utils::{
-        card_div::CardDiv,
-        line_chart::{LineChart, LineChartData},
-        map::{Map, MapPointData},
-        paged_list::PagedList,
-    },
-};
+static_loader! {
+    static LOCALES = {
+        locales: "./text/device_content",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
 
 pub struct DeviceContent {
     link: ComponentLink<Self>,
@@ -138,7 +145,7 @@ impl Component for DeviceContent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 self.update(Msg::Fetch)
             }
@@ -182,7 +189,7 @@ impl Component for DeviceContent {
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
                 true
             }
@@ -216,17 +223,21 @@ impl Component for DeviceContent {
         html! {
             <div class="container">
                 <div class="header">
-                    <h2>{ &self.props.name }</h2>
+                    <h2>{ fluent!(self.props.lang_id, "header",
+                        { "name" => self.props.name.as_str() }) }</h2>
                 </div>
                 <div class="device-info">
-                    <p class="device-id">{ format!("ID: {}", &self.props.id) }</p>
-                    <p class="info">{ &self.props.info }</p>
+                    <p class="device-id">{ fluent!(self.props.lang_id, "device-id",
+                        { "id" => self.props.id.as_str() }) }</p>
+                    <p class="info">{ fluent!(self.props.lang_id, "device-info",
+                        { "info" => self.props.info.as_str() }) }</p>
                 </div>
                 {
                     if let Some(err) = &self.state.err {
                         html! {
                             <div class="error-info">
-                                <p>{ format!("Failed to fetch data: {}", err) }</p>
+                                <p>{ fluent!(self.props.lang_id, "error-label",
+                                    { "details" => err.as_str() }) }</p>
                             </div>
                         }
                     } else {
@@ -239,7 +250,7 @@ impl Component for DeviceContent {
                         classes="form-row-item" >
                         <MatButton
                             classes=classes!("form-button")
-                            label="Back"
+                            label=fluent!(self.props.lang_id, "button-back")
                             raised=true
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
@@ -248,7 +259,7 @@ impl Component for DeviceContent {
                         classes="form-row-item" >
                         <MatButton
                             classes=classes!("form-button")
-                            label="Modify"
+                            label=fluent!(self.props.lang_id, "button-edit")
                             raised=true
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
@@ -269,23 +280,29 @@ impl Component for DeviceContent {
                         disabled=self.need_to_disable() >
                         <MatButton
                             classes=classes!("form-button")
-                            label="Fetch Messages"
+                            label=fluent!(self.props.lang_id, "button-fetch")
                             raised=true
                             disabled=self.need_to_disable() />
                     </span>
                 </div>
                 { self.fetching_progress() }
                 <p>
-                    { format!("{} messages in total, {} are alert",
-                        self.state.message_count, self.state.alert_message_count) }
+                    { fluent!(self.props.lang_id, "device-stat", {
+                        "total" => self.state.message_count,
+                        "alert" => self.state.alert_message_count,
+                    }) }
                 </p>
+                <h3 class="map-desc">{ fluent!(self.props.lang_id, "map-label") }</h3>
                 <div class="device-map">
                     { self.message_map() }
                 </div>
+                <h3 class="chart-desc">{ fluent!(self.props.lang_id, "chart-label") }</h3>
                 <div class="device-charts">
                     { self.message_line_chart() }
                 </div>
+                <h3 class="msg-title">{ fluent!(self.props.lang_id, "msg-title") }</h3>
                 <PagedList
+                    lang_id=self.props.lang_id.clone()
                     page_size=20
                     items_count=self.state.message_count as usize
                     disabled=self.need_to_disable()
@@ -343,9 +360,12 @@ impl DeviceContent {
                         }
                     }
                 }
-                <p>{ format!("value: {}", msg.value) }</p>
-                <p>{ format!("position: ({}, {})", msg.lng, msg.lat) }</p>
-                <p>{ format!("time: {}", time) }</p>
+                <p>{ fluent!(self.props.lang_id, "msg-value", { "value" => msg.value }) }</p>
+                <p>{ fluent!(self.props.lang_id, "msg-position", {
+                    "lng" => msg.lng,
+                    "lat" => msg.lat,
+                }) }</p>
+                <p>{ fluent!(self.props.lang_id, "msg-time", { "time" => time.to_string() }) }</p>
             </CardDiv>
         }
     }

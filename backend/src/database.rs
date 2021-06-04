@@ -1,3 +1,4 @@
+use anyhow::{bail, Context};
 use bson::doc;
 use chrono::Utc;
 use common::{
@@ -74,47 +75,43 @@ impl Database {
         })
     }
 
-    pub async fn login(&self, info: LoginRequest) -> Result<(String, String, String), String> {
+    pub async fn login(&self, info: LoginRequest) -> anyhow::Result<(String, String, String)> {
         let filter = doc! {
             "mail": info.mail
         };
 
-        if let Ok(Some(doc)) = self.users.find_one(filter, None).await {
-            if let Ok(user) = bson::from_bson::<User>(bson::Bson::Document(doc)) {
-                let hashed_password = blake2_str(info.password.as_bytes());
-                return if user.password == hashed_password {
-                    let login_token = blake2_str(user.mail.as_bytes());
+        if let Some(doc) = self.users.find_one(filter, None).await.context("error-net")? {
+        let user = bson::from_bson::<User>(bson::Bson::Document(doc)).context("error-unknown")?;
+            let hashed_password = blake2_str(info.password.as_bytes());
+            return if user.password == hashed_password {
+                let login_token = blake2_str(user.mail.as_bytes());
 
-                    let new_record = doc! {
-                        "login_token": login_token.clone(),
-                        "login_time": Utc::now(),
-                    };
-                    if let Ok(_) = self.login_records.insert_one(new_record, None).await {
-                        Ok((login_token, user.mail, user.name))
-                    } else {
-                        Err("error-net".to_string())
-                    }
-                } else {
-                    Err("error-wrong-password".to_string())
+                let new_record = doc! {
+                    "login_token": login_token.clone(),
+                    "login_time": Utc::now(),
                 };
-            }
+                self.login_records.insert_one(new_record, None).await.context("error-net")?;
+                Ok((login_token, user.mail, user.name))
+            } else {
+                bail!("error-wrong-password")
+            };
         }
-        Err("error-no-user".to_string())
+        bail!("error-no-user")
     }
 
-    pub async fn register(&self, info: RegisterRequest) -> Result<(), String> {
+    pub async fn register(&self, info: RegisterRequest) -> anyhow::Result<()> {
         let filter = doc! {
             "mail": &info.mail,
         };
-        if let Some(_) = self.users.find_one(filter, None).await.unwrap() {
-            return Err("Duplicated mail address".to_string());
+        if let Some(_) = self.users.find_one(filter, None).await.context("error-net")? {
+            bail!("error-dup-email");
         }
 
         let filter = doc! {
             "name": &info.name,
         };
-        if let Some(_) = self.users.find_one(filter, None).await.unwrap() {
-            return Err("Duplicated username".to_string());
+        if let Some(_) = self.users.find_one(filter, None).await.context("error-net")? {
+            bail!("error-dup-username");
         }
 
         let hashed_password = blake2_str(info.password.as_bytes());
@@ -125,16 +122,13 @@ impl Database {
             password: hashed_password,
             devices: vec![],
         };
-        let serialized_user = bson::to_bson(&user).unwrap();
-        let doc = serialized_user.as_document().unwrap();
-        if let Ok(_) = self.users.insert_one(doc.to_owned(), None).await {
-            Ok(())
-        } else {
-            Err("error-net".to_string())
-        }
+        let serialized_user = bson::to_bson(&user).context("error-unknown")?;
+        let doc = serialized_user.as_document().context("error-unknown")?;
+        self.users.insert_one(doc.to_owned(), None).await.context("error-net")?;
+        Ok(())
     }
 
-    pub async fn logout(&self, login_token: &str) -> Result<(), String> {
+    pub async fn logout(&self, login_token: &str) -> anyhow::Result<()> {
         let filter = doc! {
             "login_token": login_token,
         };
@@ -142,55 +136,45 @@ impl Database {
             .login_records
             .find_one(filter.clone(), None)
             .await
-            .unwrap()
+            .context("error-net")?
         {
-            if let Ok(_) = self.login_records.delete_many(filter, None).await {
-                Ok(())
-            } else {
-                Err("error-net".to_string())
-            }
-        } else {
-            Ok(())
+            self.login_records.delete_many(filter, None).await.context("error-net")?;
         }
+        Ok(())
     }
 
-    pub async fn insert_message(&self, msg: Message) -> Result<(), String> {
-        let serialized_msg = bson::to_bson(&msg).unwrap();
-        let doc = serialized_msg.as_document().unwrap();
-        if let Ok(_) = self.messages.insert_one(doc.to_owned(), None).await {
-            Ok(())
-        } else {
-            Err("error-net".to_string())
-        }
+    pub async fn insert_message(&self, msg: Message) -> anyhow::Result<()> {
+        let serialized_msg = bson::to_bson(&msg).context("error-unknown")?;
+        let doc = serialized_msg.as_document().context("error-unknown")?;
+        self.messages.insert_one(doc.to_owned(), None).await.context("error-net")?;
+        Ok(())
     }
 
-    pub async fn create_device(&self, info: CreateDeviceRequest) -> Result<(), String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    pub async fn create_device(&self, info: CreateDeviceRequest) -> anyhow::Result<()> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired");
         }
 
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        if let None = self.users.find_one(filter, None).await.unwrap() {
-            return Err("User doesn't exist".to_string());
+        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+            bail!("error-no-user");
         }
 
         let filter = doc! {
             "id": info.id.clone()
         };
-        if let None = self.devices.find_one(filter, None).await.unwrap() {
+        if let None = self.devices.find_one(filter, None).await.context("error-net")? {
             let dev = Device {
                 _id: None,
                 id: info.id.clone(),
                 name: info.id.clone(),
                 info: "".to_string(),
             };
-            let serialized_dev = bson::to_bson(&dev).unwrap();
-            let doc = serialized_dev.as_document().unwrap();
-            if let Err(_) = self.devices.insert_one(doc.to_owned(), None).await {
-                return Err("error-net".to_string());
-            }
+            let serialized_dev = bson::to_bson(&dev).context("error-unknown")?;
+            let doc = serialized_dev.as_document().context("error-unknown")?;
+            self.devices.insert_one(doc.to_owned(), None).await.context("error-net")?;
         }
 
         let query = doc! {
@@ -201,23 +185,20 @@ impl Database {
                 "devices": info.id.clone(),
             }
         };
-        if let Ok(_) = self.users.update_one(query, update, None).await {
-            Ok(())
-        } else {
-            Err("error-net".to_string())
-        }
+        self.users.update_one(query, update, None).await.context("error-net")?;
+        Ok(())
     }
 
-    pub async fn remove_device(&self, info: RemoveDeviceRequest) -> Result<(), String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    pub async fn remove_device(&self, info: RemoveDeviceRequest) -> anyhow::Result<()> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired");
         }
 
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        if let None = self.users.find_one(filter, None).await.unwrap() {
-            return Err("User doesn't exist".to_string());
+        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+            bail!("error-no-user");
         }
 
         let filter = doc! {
@@ -228,8 +209,8 @@ impl Database {
                 }
             }
         };
-        if let None = self.users.find_one(filter, None).await.unwrap() {
-            return Err("Device doesn't exist".to_string());
+        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+            bail!("error-no-device");
         }
 
         let query = doc! {
@@ -240,24 +221,21 @@ impl Database {
                 "devices": info.id.clone(),
             }
         };
-        if let Ok(_) = self.users.update_one(query, update, None).await {
-            Ok(())
-        } else {
-            Err("error-net".to_string())
-        }
+        self.users.update_one(query, update, None).await.context("error-net")?;
+        Ok(())
     }
 
-    pub async fn modify_device(&self, info: ModifyDeviceRequest) -> Result<(), String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    pub async fn modify_device(&self, info: ModifyDeviceRequest) -> anyhow::Result<()> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired");
         }
 
         let filter = doc! {
             "id": info.id.clone(),
         };
-        let device = self.devices.find_one(filter, None).await.unwrap();
+        let device = self.devices.find_one(filter, None).await.context("error-net")?;
         if device.is_none() {
-            return Err("Device doesn't exist".to_string());
+            bail!("error-no-device");
         }
 
         let query = doc! {
@@ -269,45 +247,42 @@ impl Database {
                 "info": info.info,
             }
         };
-        if let Ok(_) = self.devices.update_one(query, update, None).await {
-            Ok(())
-        } else {
-            Err("error-net".to_string())
-        }
+        self.devices.update_one(query, update, None).await.context("error-net")?;
+        Ok(())
     }
 
     pub async fn fetch_device(
         &self,
         info: FetchDeviceRequest,
-    ) -> Result<(String, String, String), String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    ) -> anyhow::Result<(String, String, String)> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired".to_string());
         }
 
         let filter = doc! {
             "id": info.id
         };
-        let device = self.devices.find_one(filter, None).await.unwrap();
+        let device = self.devices.find_one(filter, None).await.context("error-net")?;
         if device.is_none() {
-            return Err("Device doesn't exist".to_string());
+            bail!("error-no-device");
         }
-        let device: Device = bson::from_bson(bson::Bson::Document(device.unwrap())).unwrap();
+        let device: Device = bson::from_bson(bson::Bson::Document(device.context("error-unknown")?)).context("error-unknown")?;
         Ok((device.id, device.name, device.info))
     }
 
     pub async fn fetch_device_profile(
         &self,
         info: FetchDeviceProfileRequest,
-    ) -> Result<DeviceInfo, String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    ) -> anyhow::Result<DeviceInfo> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired");
         }
 
         let filter = doc! {
             "id": info.id.clone()
         };
-        if let Some(dev) = self.devices.find_one(filter, None).await.unwrap() {
-            let dev: Device = bson::from_bson(bson::Bson::Document(dev)).unwrap();
+        if let Some(dev) = self.devices.find_one(filter, None).await.context("error-net")? {
+            let dev: Device = bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
 
             let count_filter = doc! {
                 "id": dev.id.clone(),
@@ -316,7 +291,7 @@ impl Database {
                 .messages
                 .count_documents(count_filter, None)
                 .await
-                .unwrap() as u32;
+                .context("error-net")? as u32;
             let count_filter = doc! {
                 "id": dev.id.clone(),
                 "alert": true,
@@ -325,7 +300,7 @@ impl Database {
                 .messages
                 .count_documents(count_filter, None)
                 .await
-                .unwrap() as u32;
+                .context("error-net")? as u32;
 
             Ok(DeviceInfo {
                 id: dev.id,
@@ -334,34 +309,34 @@ impl Database {
                 alert_message_count,
             })
         } else {
-            Err("Device doesn't exist".to_string())
+            bail!("error-no-device")
         }
     }
 
     pub async fn fetch_device_list(
         &self,
         info: FetchDeviceListRequest,
-    ) -> Result<Vec<DeviceInfo>, String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    ) -> anyhow::Result<Vec<DeviceInfo>> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired".to_string());
         }
 
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        let user = self.users.find_one(filter, None).await.unwrap();
+        let user = self.users.find_one(filter, None).await.context("error-net")?;
         if user.is_none() {
-            return Err("User doesn't exist".to_string());
+            bail!("error-no-user");
         }
-        let user: User = bson::from_bson(bson::Bson::Document(user.unwrap())).unwrap();
+        let user: User = bson::from_bson(bson::Bson::Document(user.context("error-unknown")?)).context("error-unknown")?;
 
         let mut devices = Vec::with_capacity(user.devices.len());
         for id in &user.devices {
             let filter = doc! {
                 "id": id.clone()
             };
-            if let Some(dev) = self.devices.find_one(filter, None).await.unwrap() {
-                let dev: Device = bson::from_bson(bson::Bson::Document(dev)).unwrap();
+            if let Some(dev) = self.devices.find_one(filter, None).await.context("error-net")? {
+                let dev: Device = bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
 
                 let count_filter = doc! {
                     "id": dev.id.clone(),
@@ -370,7 +345,7 @@ impl Database {
                     .messages
                     .count_documents(count_filter, None)
                     .await
-                    .unwrap() as u32;
+                    .context("error-net")? as u32;
                 let count_filter = doc! {
                     "id": dev.id.clone(),
                     "alert": true,
@@ -379,7 +354,7 @@ impl Database {
                     .messages
                     .count_documents(count_filter, None)
                     .await
-                    .unwrap() as u32;
+                    .context("error-net")? as u32;
 
                 let dev = DeviceInfo {
                     id: dev.id,
@@ -389,7 +364,7 @@ impl Database {
                 };
                 devices.push(dev);
             } else {
-                return Err("Device doesn't exist".to_string());
+                bail!("error-no-device");
             }
         }
 
@@ -399,9 +374,9 @@ impl Database {
     pub async fn fetch_message_list(
         &self,
         info: FetchMessageListRequest,
-    ) -> Result<Vec<MessageInfo>, String> {
-        if !self.check_login(&info.login_token).await {
-            return Err("Login has expired".to_string());
+    ) -> anyhow::Result<Vec<MessageInfo>> {
+        if !self.check_login(&info.login_token).await? {
+            bail!("Login has expired");
         }
 
         let filter = doc! {
@@ -418,11 +393,11 @@ impl Database {
             .messages
             .find(filter, find_options)
             .await
-            .unwrap()
+            .context("error-net")?
             .skip(info.first_index);
         let mut messages = vec![];
         while let Some(msg) = cursor.next().await {
-            let msg: Message = bson::from_bson(bson::Bson::Document(msg.unwrap())).unwrap();
+            let msg: Message = bson::from_bson(bson::Bson::Document(msg.context("error-unknown")?)).context("error-unknown")?;
             let msg = MessageInfo {
                 id: msg.id,
                 info: msg.info,
@@ -443,11 +418,10 @@ impl Database {
 
     const MAX_LOGIN_TIME_SECS: i64 = 3600;
 
-    pub async fn check_login(&self, login_token: &str) -> bool {
+    pub async fn check_login(&self, login_token: &str) -> anyhow::Result<bool> {
         let filter = doc! {
             "login_token": login_token
         };
-        // let find_options = FindOptions::builder().sort(doc! { "timestamp": -1 }).build();
         let find_options = FindOneOptions::builder()
             .sort(doc! { "login_time": -1 })
             .build();
@@ -455,21 +429,21 @@ impl Database {
             .login_records
             .find_one(filter.clone(), find_options)
             .await
-            .unwrap()
+            .context("error-net")?
         {
-            let login_time = record.get_datetime("login_time").unwrap();
+            let login_time = record.get_datetime("login_time").context("error-unknown")?;
             let now_time = Utc::now();
             let diff = now_time
                 .naive_utc()
                 .signed_duration_since(login_time.naive_utc());
             if diff.num_seconds() > Self::MAX_LOGIN_TIME_SECS {
-                self.login_records.delete_one(filter, None).await.unwrap();
+                self.login_records.delete_one(filter, None).await.context("error-net")?;
             } else {
-                return true;
+                return Ok(true);
             }
         }
 
-        false
+        Ok(false)
     }
 }
 
