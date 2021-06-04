@@ -96,7 +96,8 @@ impl PagedList {
         let next_page_click = self.link.callback(|_| Msg::NextPage);
         let previous_page_click = self.link.callback(|_| Msg::PreviousPage);
 
-        let page_count = (self.props.items_count + self.props.page_size - 1) / self.props.page_size;
+        let page_count =
+            ((self.props.items_count + self.props.page_size - 1) / self.props.page_size).max(1);
         let prev_disabled = self.state.curr_page == 0 || self.props.disabled;
         let next_disabled = self.state.curr_page == page_count - 1 || self.props.disabled;
 

@@ -186,6 +186,7 @@ impl Component for App {
         });
 
         let login_token = Rc::new(self.state.login_token.clone());
+        let lang_id = self.state.lang_id.clone();
         let mail = Rc::new(self.state.mail.clone());
         let name = Rc::new(self.state.name.clone());
         let device_id = Rc::new(self.state.device_id.clone());
@@ -210,7 +211,10 @@ impl Component for App {
                             <MatMenu
                                 quick=true
                                 menu_link=self.lang_link.clone()
-                                onselected=lang_select >
+                                onselected=lang_select
+                                absolute=true
+                                x=-20
+                                y=20 >
                                 {
                                     for LANG_LIST_ITEMS
                                         .iter()
@@ -230,13 +234,18 @@ impl Component for App {
                             <DefaultComponent login_token=login_token.clone() />
                         },
                         AppRoute::Login => html! {
-                            <LoginComponent onlogin=login_callback.clone() />
+                            <LoginComponent
+                                lang_id=lang_id.clone()
+                                onlogin=login_callback.clone() />
                         },
                         AppRoute::Register => html! {
-                            <RegisterComponent onregister=register_callback.clone() />
+                            <RegisterComponent
+                                lang_id=lang_id.clone()
+                                onregister=register_callback.clone() />
                         },
                         AppRoute::Home => html! {
                             <HomeComponent
+                                lang_id=lang_id.clone()
                                 login_token=login_token.clone()
                                 mail=mail.clone()
                                 name=name.clone()
@@ -245,6 +254,7 @@ impl Component for App {
                         },
                         AppRoute::ModifyDevice => html! {
                             <ModifyDevice
+                                lang_id=lang_id.clone()
                                 login_token=login_token.clone()
                                 mail=mail.clone()
                                 id=device_id.clone()
@@ -253,6 +263,7 @@ impl Component for App {
                         },
                         AppRoute::DeviceContent => html! {
                             <DeviceContent
+                                lang_id=lang_id.clone()
                                 login_token=login_token.clone()
                                 mail=mail.clone()
                                 id=device_id.clone()
@@ -260,7 +271,9 @@ impl Component for App {
                                 info=device_info.clone() />
                         },
                         AppRoute::LogoutHint => html! {
-                            <LogoutHint onlogout=logout_callback.clone() />
+                            <LogoutHint
+                                lang_id=lang_id.clone()
+                                onlogout=logout_callback.clone() />
                         }
                     }
                 }) />

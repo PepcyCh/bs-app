@@ -4,24 +4,38 @@ use std::process::Command;
 fn build_frontend() -> Result<()> {
     eprintln!("Building frontend...");
 
-    let status = Command::new("wasm-pack")
-        .args(&[
-            "build",
-            "--target",
-            "web",
-            "--out-name",
-            "wasm",
-            "--out-dir",
-            "../out",
-        ])
+    // let status = Command::new("wasm-pack")
+    //     .args(&[
+    //         "build",
+    //         "--target",
+    //         "web",
+    //         "--out-name",
+    //         "wasm",
+    //         "--out-dir",
+    //         "../out",
+    //     ])
+    //     .current_dir("./frontend")
+    //     .status()
+    //     .expect("Failed to build frontend");
+    // eprintln!("Frontend is built");
+
+    let args = if cfg!(debug_assertions) {
+        vec!["build"]
+    } else {
+        vec!["build", "--release"]
+    };
+    let status = Command::new("trunk")
+        .args(&args)
         .current_dir("./frontend")
         .status()
         .expect("Failed to build frontend");
     eprintln!("Frontend is built");
 
     let mut frontend_files = [
-        glob::glob("./frontend/static/*.html")?,
         glob::glob("./frontend/static/*.css")?,
+        glob::glob("./frontend/dist/*.html")?,
+        glob::glob("./frontend/dist/*.js")?,
+        glob::glob("./frontend/dist/*.wasm")?,
     ];
     let frontend_files: Vec<_> = frontend_files
         .iter_mut()

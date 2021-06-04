@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use fluent_templates::LanguageIdentifier;
 use yew::{
     html,
     services::{timeout::TimeoutTask, TimeoutService},
@@ -9,7 +10,7 @@ use yew_material::MatButton;
 
 pub struct LogoutHint {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     timeout_task: Option<TimeoutTask>,
 }
 
@@ -18,13 +19,14 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Prop {
+pub struct Props {
+    pub lang_id: LanguageIdentifier,
     pub onlogout: Callback<()>,
 }
 
 impl Component for LogoutHint {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let timeout_task =

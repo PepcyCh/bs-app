@@ -8,6 +8,7 @@ use common::{
         DeviceInfo, ErrorResponse, FetchDeviceListResponse, FetchDeviceResponse, SimpleResponse,
     },
 };
+use fluent_templates::LanguageIdentifier;
 use yew::{
     agent::Bridged,
     classes,
@@ -26,7 +27,7 @@ use crate::{route::AppRoute, utils::card_div::CardDiv};
 
 pub struct HomeComponent {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
@@ -58,7 +59,8 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Prop {
+pub struct Props {
+    pub lang_id: LanguageIdentifier,
     pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub name: Rc<String>,
@@ -68,7 +70,7 @@ pub struct Prop {
 
 impl Component for HomeComponent {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));

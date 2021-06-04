@@ -5,6 +5,7 @@ use common::{
     request::{FetchDeviceProfileRequest, FetchMessageListRequest},
     response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo},
 };
+use fluent_templates::LanguageIdentifier;
 use yew::{
     agent::Bridged,
     classes,
@@ -63,6 +64,7 @@ pub enum Msg {
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Props {
+    pub lang_id: LanguageIdentifier,
     pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub id: Rc<String>,

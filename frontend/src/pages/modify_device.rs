@@ -4,6 +4,7 @@ use common::{
     request::ModifyDeviceRequest,
     response::{ErrorResponse, SimpleResponse},
 };
+use fluent_templates::LanguageIdentifier;
 use lazy_static::lazy_static;
 use regex::Regex;
 use yew::{
@@ -24,7 +25,7 @@ use crate::route::AppRoute;
 
 pub struct ModifyDevice {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
@@ -48,7 +49,8 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Prop {
+pub struct Props {
+    pub lang_id: LanguageIdentifier,
     pub login_token: Rc<String>,
     pub mail: Rc<String>,
     pub id: Rc<String>,
@@ -62,7 +64,7 @@ lazy_static! {
 
 impl Component for ModifyDevice {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));

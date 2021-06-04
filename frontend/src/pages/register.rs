@@ -3,6 +3,7 @@ use common::{
     request::RegisterRequest,
     response::{ErrorResponse, SimpleResponse},
 };
+use fluent_templates::LanguageIdentifier;
 use lazy_static::lazy_static;
 use regex::Regex;
 use sha2::{Digest, Sha256};
@@ -26,7 +27,7 @@ use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 pub struct RegisterComponent {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
@@ -53,7 +54,8 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone)]
-pub struct Prop {
+pub struct Props {
+    pub lang_id: LanguageIdentifier,
     pub onregister: Callback<()>,
 }
 
@@ -66,7 +68,7 @@ lazy_static! {
 
 impl Component for RegisterComponent {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
