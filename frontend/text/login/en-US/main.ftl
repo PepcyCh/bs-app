@@ -1,0 +1,13 @@
+header = Login
+email-label = E-mail
+email-hint = E-mail address
+password-label = Password
+password-hint = Password
+error-label = Failed to login: { $details }
+error-email-empty = E-mail address must not be empty
+error-password-empty = Password must not be empty
+error-no-user = No such user
+error-wrong-password = Password is wrong
+error-net = Net error
+btn-login = Login
+btn-register = Register

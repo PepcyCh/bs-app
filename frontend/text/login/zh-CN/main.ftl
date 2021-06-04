@@ -1,0 +1,13 @@
+header = 登录
+email-label = 邮箱
+email-hint = 账号邮箱地址
+password-label = 密码
+password-hint = 密码
+error-label = 登陆失败: { $details }
+error-email-empty = 邮箱不能为空
+error-password-empty = 密码不能为空
+error-no-user = 用户不存在
+error-wrong-password = 密码错误
+error-net = 网络错误
+btn-login = 登录
+btn-register = 注册

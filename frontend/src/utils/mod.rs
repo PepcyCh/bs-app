@@ -28,3 +28,20 @@ macro_rules! create_fetch_task {
         crate::create_fetch_task!($self, $url, $req, SimpleResponse, $res_msg)
     };
 }
+
+#[macro_export]
+macro_rules! fluent {
+    ( $lang:expr, $text_id:expr, { $($key:expr => $value:expr),* $(,)? } ) => {
+        {
+            let args = maplit::hashmap! {
+                $($key => $value.into(),)*
+            };
+            LOCALES.lookup_with_args(&$lang, $text_id, &args)
+        }
+    };
+    ( $lang:expr, $text_id:expr ) => {
+        {
+            LOCALES.lookup(&$lang, $text_id)
+        }
+    };
+}

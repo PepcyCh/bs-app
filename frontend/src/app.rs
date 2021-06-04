@@ -1,10 +1,16 @@
-use std::rc::Rc;
-
+use crate::fluent;
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 use yew::{
-    agent::Bridged, format::Json, html, services::StorageService, Bridge, Component, ComponentLink,
+    agent::Bridged, classes, format::Json, html, services::StorageService, Bridge, Component,
+    ComponentLink,
 };
-use yew_material::{top_app_bar_fixed::MatTopAppBarTitle, MatTopAppBarFixed};
+use yew_material::{
+    list::{ListIndex, SelectedDetail},
+    top_app_bar_fixed::{MatTopAppBarActionItems, MatTopAppBarTitle},
+    MatIconButton, MatListItem, MatMenu, MatTopAppBarFixed, WeakComponentLink,
+};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
 use crate::{
@@ -16,8 +22,17 @@ use crate::{
     route::AppRoute,
 };
 
+static_loader! {
+    static LOCALES = {
+        locales: "./text/app_root",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
+
 pub struct App {
     link: ComponentLink<Self>,
+    lang_link: WeakComponentLink<MatMenu>,
     state: State,
     storage: StorageService,
     route_agent: Box<dyn Bridge<RouteAgent>>,
@@ -32,6 +47,7 @@ struct State {
     device_id: String,
     device_name: String,
     device_info: String,
+    lang_id: LanguageIdentifier,
 }
 
 pub enum Msg {
@@ -39,10 +55,15 @@ pub enum Msg {
     Login((String, String, String)),
     Logout,
     Register,
+    ShowLanguageList,
+    SelectLanguage(i32),
     SelectDevice((String, String, String)),
 }
 
 const STORAGE_KEY: &str = "pepcy.device_viewer";
+const STORAGE_KEY_LANG: &str = "pepcy.device_viewer.lang";
+
+const LANG_LIST_ITEMS: [(&str, &str); 2] = [("简体中文", "zh-CN"), ("English", "en-US")];
 
 #[derive(Deserialize, Serialize)]
 struct StoredData {
@@ -58,6 +79,7 @@ impl Component for App {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(yew::services::storage::Area::Local)
             .expect("Failed to init storage");
+
         let mut state = State::default();
         if let Json(Ok(StoredData {
             login_token,
@@ -69,9 +91,18 @@ impl Component for App {
             state.mail = mail;
             state.name = name;
         }
+        let lang = if let Json(Ok(lang)) = storage.restore(STORAGE_KEY_LANG) {
+            lang
+        } else {
+            "zh-CN".to_owned()
+        };
+        let lang_id: LanguageIdentifier = lang.parse().unwrap();
+        state.lang_id = lang_id;
+
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
         Self {
             link,
+            lang_link: WeakComponentLink::default(),
             state,
             storage,
             route_agent,
@@ -107,6 +138,21 @@ impl Component for App {
                 self.route_agent.send(ChangeRoute(AppRoute::Login.into()));
                 true
             }
+            Msg::ShowLanguageList => {
+                self.lang_link.show();
+                true
+            }
+            Msg::SelectLanguage(index) => {
+                if index >= 0 && index < LANG_LIST_ITEMS.len() as i32 {
+                    let lang = LANG_LIST_ITEMS[index as usize].1;
+                    self.state.lang_id = lang.parse().unwrap();
+                    self.storage
+                        .store(STORAGE_KEY_LANG, Json(&lang.to_string()));
+                    true
+                } else {
+                    false
+                }
+            }
             Msg::SelectDevice((id, name, info)) => {
                 self.state.device_id = id;
                 self.state.device_name = name;
@@ -130,6 +176,15 @@ impl Component for App {
             .link
             .callback(|data: (String, String, String)| Msg::SelectDevice(data));
 
+        let lang_click = self.link.callback(|_| Msg::ShowLanguageList);
+        let lang_select = self.link.callback(|e: SelectedDetail| {
+            if let ListIndex::Single(Some(ind)) = e.index {
+                Msg::SelectLanguage(ind as i32)
+            } else {
+                Msg::SelectLanguage(-1)
+            }
+        });
+
         let login_token = Rc::new(self.state.login_token.clone());
         let mail = Rc::new(self.state.mail.clone());
         let name = Rc::new(self.state.name.clone());
@@ -142,9 +197,32 @@ impl Component for App {
                 <MatTopAppBarFixed>
                     <MatTopAppBarTitle>
                         <div class="app-title">
-                            <h1>{ "Device Viewer" }</h1>
+                            <h1>{ fluent!(self.state.lang_id, "header") }</h1>
                         </div>
                     </MatTopAppBarTitle>
+                    <MatTopAppBarActionItems>
+                        <div style="position:relative;">
+                            <span onclick=lang_click>
+                                <MatIconButton
+                                    classes=classes!("translate-button")
+                                    icon="translate" />
+                            </span>
+                            <MatMenu
+                                quick=true
+                                menu_link=self.lang_link.clone()
+                                onselected=lang_select >
+                                {
+                                    for LANG_LIST_ITEMS
+                                        .iter()
+                                        .map(|item| {
+                                            html! {
+                                                <MatListItem>{ item.0 }</MatListItem>
+                                            }
+                                        })
+                                }
+                            </MatMenu>
+                        </div>
+                    </MatTopAppBarActionItems>
                 </MatTopAppBarFixed>
                 <Router<AppRoute, ()> render=Router::render(move |switch: AppRoute| {
                     match switch {

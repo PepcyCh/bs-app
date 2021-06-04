@@ -92,14 +92,14 @@ impl Database {
                     if let Ok(_) = self.login_records.insert_one(new_record, None).await {
                         Ok((login_token, user.mail, user.name))
                     } else {
-                        Err("Net error".to_string())
+                        Err("error-net".to_string())
                     }
                 } else {
-                    Err("Wrong password".to_string())
+                    Err("error-wrong-password".to_string())
                 };
             }
         }
-        Err("No such user".to_string())
+        Err("error-no-user".to_string())
     }
 
     pub async fn register(&self, info: RegisterRequest) -> Result<(), String> {
@@ -130,7 +130,7 @@ impl Database {
         if let Ok(_) = self.users.insert_one(doc.to_owned(), None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("error-net".to_string())
         }
     }
 
@@ -147,7 +147,7 @@ impl Database {
             if let Ok(_) = self.login_records.delete_many(filter, None).await {
                 Ok(())
             } else {
-                Err("Net error".to_string())
+                Err("error-net".to_string())
             }
         } else {
             Ok(())
@@ -160,7 +160,7 @@ impl Database {
         if let Ok(_) = self.messages.insert_one(doc.to_owned(), None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("error-net".to_string())
         }
     }
 
@@ -189,7 +189,7 @@ impl Database {
             let serialized_dev = bson::to_bson(&dev).unwrap();
             let doc = serialized_dev.as_document().unwrap();
             if let Err(_) = self.devices.insert_one(doc.to_owned(), None).await {
-                return Err("Net error".to_string());
+                return Err("error-net".to_string());
             }
         }
 
@@ -204,7 +204,7 @@ impl Database {
         if let Ok(_) = self.users.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("error-net".to_string())
         }
     }
 
@@ -243,7 +243,7 @@ impl Database {
         if let Ok(_) = self.users.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("error-net".to_string())
         }
     }
 
@@ -272,7 +272,7 @@ impl Database {
         if let Ok(_) = self.devices.update_one(query, update, None).await {
             Ok(())
         } else {
-            Err("Net error".to_string())
+            Err("error-net".to_string())
         }
     }
 

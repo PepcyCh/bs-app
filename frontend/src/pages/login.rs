@@ -1,8 +1,9 @@
-use crate::route::AppRoute;
+use crate::{fluent, route::AppRoute};
 use common::{
     request::LoginRequest,
     response::{ErrorResponse, LoginResponse},
 };
+use fluent_templates::{static_loader, LanguageIdentifier, Loader};
 use sha2::{Digest, Sha256};
 use yew::{
     agent::Bridged,
@@ -18,12 +19,21 @@ use yew::{
 use yew_material::{text_inputs::TextFieldType, MatButton, MatTextField};
 use yew_router::{agent::RouteRequest::ChangeRoute, prelude::*};
 
+static_loader! {
+    static LOCALES = {
+        locales: "./text/login",
+        fallback_language: "zh-CN",
+        customise: |bundle| bundle.set_use_isolating(false),
+    };
+}
+
 pub struct LoginComponent {
     link: ComponentLink<Self>,
-    props: Prop,
+    props: Props,
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
+    lang_id: LanguageIdentifier,
 }
 
 #[derive(Default)]
@@ -42,22 +52,25 @@ pub enum Msg {
 }
 
 #[derive(Properties, Clone)]
-pub struct Prop {
+pub struct Props {
     pub onlogin: Callback<(String, String, String)>,
 }
 
 impl Component for LoginComponent {
     type Message = Msg;
-    type Properties = Prop;
+    type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let route_agent = RouteAgent::bridge(link.callback(|_| Msg::Nop));
+        // TODO - store language in local storage (and db)
+        let lang_id: LanguageIdentifier = "zh-CN".parse().unwrap();
         Self {
             link,
             props,
             state: State::default(),
             route_agent,
             fetch_task: None,
+            lang_id,
         }
     }
 
@@ -75,9 +88,9 @@ impl Component for LoginComponent {
             Msg::Login => {
                 self.state.err = None;
                 if self.state.mail.is_empty() {
-                    self.state.err = Some("E-mail address is empty".to_string());
+                    self.state.err = Some(fluent!(self.lang_id, "error-email-empty"));
                 } else if self.state.password.is_empty() {
-                    self.state.err = Some("Password is empty".to_string());
+                    self.state.err = Some(fluent!(self.lang_id, "error-password-empty"));
                 } else {
                     let hashed_password =
                         format!("{:x}", Sha256::digest(self.state.password.as_bytes()));
@@ -103,7 +116,7 @@ impl Component for LoginComponent {
                         .onlogin
                         .emit((response.login_token, response.mail, response.name));
                 } else {
-                    self.state.err = Some(response.err);
+                    self.state.err = Some(fluent!(self.lang_id, &response.err));
                 }
                 true
             }
@@ -124,14 +137,14 @@ impl Component for LoginComponent {
             <div class="container">
                 <div class="form">
                     <div class="header">
-                        <h2>{ "Login" }</h2>
+                        <h2>{ fluent!(self.lang_id, "header") }</h2>
                     </div>
                     <div class="form-item">
                         <MatTextField
                             classes=classes!("form-input")
                             outlined=true
-                            label="E-Mail"
-                            helper="email address"
+                            label=fluent!(self.lang_id, "email-label")
+                            helper=fluent!(self.lang_id, "email-hint")
                             helper_persistent=true
                             value=self.state.mail.clone()
                             oninput=mail_oninput />
@@ -141,8 +154,8 @@ impl Component for LoginComponent {
                             classes=classes!("form-input")
                             outlined=true
                             field_type=TextFieldType::Password
-                            label="Password"
-                            helper="password"
+                            label=fluent!(self.lang_id, "password-label")
+                            helper=fluent!(self.lang_id, "password-hint")
                             helper_persistent=true
                             value=self.state.password.clone()
                             oninput=password_oninput />
@@ -151,7 +164,8 @@ impl Component for LoginComponent {
                         if let Some(err) = &self.state.err {
                             html! {
                                 <div class="error-info">
-                                    <p>{ format!("Failed to login: {}", err) }</p>
+                                    <p>{ fluent!(self.lang_id, "error-label",
+                                        { "details" => err.as_str() }) }</p>
                                 </div>
                             }
                         } else {
@@ -165,7 +179,7 @@ impl Component for LoginComponent {
                             disabled=self.need_to_disable() >
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Login"
+                                label=fluent!(self.lang_id, "btn-login")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </span>
@@ -174,7 +188,7 @@ impl Component for LoginComponent {
                             classes="form-row-item">
                             <MatButton
                                 classes=classes!("form-button")
-                                label="Register"
+                                label=fluent!(self.lang_id, "btn-register")
                                 disabled=self.need_to_disable()
                                 raised=true />
                         </RouterAnchor<AppRoute>>
