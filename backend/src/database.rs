@@ -80,8 +80,14 @@ impl Database {
             "mail": info.mail
         };
 
-        if let Some(doc) = self.users.find_one(filter, None).await.context("error-net")? {
-        let user = bson::from_bson::<User>(bson::Bson::Document(doc)).context("error-unknown")?;
+        if let Some(doc) = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
+            let user =
+                bson::from_bson::<User>(bson::Bson::Document(doc)).context("error-unknown")?;
             let hashed_password = blake2_str(info.password.as_bytes());
             return if user.password == hashed_password {
                 let login_token = blake2_str(user.mail.as_bytes());
@@ -90,7 +96,10 @@ impl Database {
                     "login_token": login_token.clone(),
                     "login_time": Utc::now(),
                 };
-                self.login_records.insert_one(new_record, None).await.context("error-net")?;
+                self.login_records
+                    .insert_one(new_record, None)
+                    .await
+                    .context("error-net")?;
                 Ok((login_token, user.mail, user.name))
             } else {
                 bail!("error-wrong-password")
@@ -103,14 +112,24 @@ impl Database {
         let filter = doc! {
             "mail": &info.mail,
         };
-        if let Some(_) = self.users.find_one(filter, None).await.context("error-net")? {
+        if let Some(_) = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             bail!("error-dup-email");
         }
 
         let filter = doc! {
             "name": &info.name,
         };
-        if let Some(_) = self.users.find_one(filter, None).await.context("error-net")? {
+        if let Some(_) = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             bail!("error-dup-username");
         }
 
@@ -124,7 +143,10 @@ impl Database {
         };
         let serialized_user = bson::to_bson(&user).context("error-unknown")?;
         let doc = serialized_user.as_document().context("error-unknown")?;
-        self.users.insert_one(doc.to_owned(), None).await.context("error-net")?;
+        self.users
+            .insert_one(doc.to_owned(), None)
+            .await
+            .context("error-net")?;
         Ok(())
     }
 
@@ -138,7 +160,10 @@ impl Database {
             .await
             .context("error-net")?
         {
-            self.login_records.delete_many(filter, None).await.context("error-net")?;
+            self.login_records
+                .delete_many(filter, None)
+                .await
+                .context("error-net")?;
         }
         Ok(())
     }
@@ -146,7 +171,10 @@ impl Database {
     pub async fn insert_message(&self, msg: Message) -> anyhow::Result<()> {
         let serialized_msg = bson::to_bson(&msg).context("error-unknown")?;
         let doc = serialized_msg.as_document().context("error-unknown")?;
-        self.messages.insert_one(doc.to_owned(), None).await.context("error-net")?;
+        self.messages
+            .insert_one(doc.to_owned(), None)
+            .await
+            .context("error-net")?;
         Ok(())
     }
 
@@ -158,14 +186,24 @@ impl Database {
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+        if let None = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             bail!("error-no-user");
         }
 
         let filter = doc! {
             "id": info.id.clone()
         };
-        if let None = self.devices.find_one(filter, None).await.context("error-net")? {
+        if let None = self
+            .devices
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             let dev = Device {
                 _id: None,
                 id: info.id.clone(),
@@ -174,7 +212,10 @@ impl Database {
             };
             let serialized_dev = bson::to_bson(&dev).context("error-unknown")?;
             let doc = serialized_dev.as_document().context("error-unknown")?;
-            self.devices.insert_one(doc.to_owned(), None).await.context("error-net")?;
+            self.devices
+                .insert_one(doc.to_owned(), None)
+                .await
+                .context("error-net")?;
         }
 
         let query = doc! {
@@ -185,7 +226,10 @@ impl Database {
                 "devices": info.id.clone(),
             }
         };
-        self.users.update_one(query, update, None).await.context("error-net")?;
+        self.users
+            .update_one(query, update, None)
+            .await
+            .context("error-net")?;
         Ok(())
     }
 
@@ -197,7 +241,12 @@ impl Database {
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+        if let None = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             bail!("error-no-user");
         }
 
@@ -209,7 +258,12 @@ impl Database {
                 }
             }
         };
-        if let None = self.users.find_one(filter, None).await.context("error-net")? {
+        if let None = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
             bail!("error-no-device");
         }
 
@@ -221,7 +275,10 @@ impl Database {
                 "devices": info.id.clone(),
             }
         };
-        self.users.update_one(query, update, None).await.context("error-net")?;
+        self.users
+            .update_one(query, update, None)
+            .await
+            .context("error-net")?;
         Ok(())
     }
 
@@ -233,7 +290,11 @@ impl Database {
         let filter = doc! {
             "id": info.id.clone(),
         };
-        let device = self.devices.find_one(filter, None).await.context("error-net")?;
+        let device = self
+            .devices
+            .find_one(filter, None)
+            .await
+            .context("error-net")?;
         if device.is_none() {
             bail!("error-no-device");
         }
@@ -247,7 +308,10 @@ impl Database {
                 "info": info.info,
             }
         };
-        self.devices.update_one(query, update, None).await.context("error-net")?;
+        self.devices
+            .update_one(query, update, None)
+            .await
+            .context("error-net")?;
         Ok(())
     }
 
@@ -262,11 +326,17 @@ impl Database {
         let filter = doc! {
             "id": info.id
         };
-        let device = self.devices.find_one(filter, None).await.context("error-net")?;
+        let device = self
+            .devices
+            .find_one(filter, None)
+            .await
+            .context("error-net")?;
         if device.is_none() {
             bail!("error-no-device");
         }
-        let device: Device = bson::from_bson(bson::Bson::Document(device.context("error-unknown")?)).context("error-unknown")?;
+        let device: Device =
+            bson::from_bson(bson::Bson::Document(device.context("error-unknown")?))
+                .context("error-unknown")?;
         Ok((device.id, device.name, device.info))
     }
 
@@ -281,8 +351,14 @@ impl Database {
         let filter = doc! {
             "id": info.id.clone()
         };
-        if let Some(dev) = self.devices.find_one(filter, None).await.context("error-net")? {
-            let dev: Device = bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
+        if let Some(dev) = self
+            .devices
+            .find_one(filter, None)
+            .await
+            .context("error-net")?
+        {
+            let dev: Device =
+                bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
 
             let count_filter = doc! {
                 "id": dev.id.clone(),
@@ -324,19 +400,30 @@ impl Database {
         let filter = doc! {
             "mail": info.mail.clone(),
         };
-        let user = self.users.find_one(filter, None).await.context("error-net")?;
+        let user = self
+            .users
+            .find_one(filter, None)
+            .await
+            .context("error-net")?;
         if user.is_none() {
             bail!("error-no-user");
         }
-        let user: User = bson::from_bson(bson::Bson::Document(user.context("error-unknown")?)).context("error-unknown")?;
+        let user: User = bson::from_bson(bson::Bson::Document(user.context("error-unknown")?))
+            .context("error-unknown")?;
 
         let mut devices = Vec::with_capacity(user.devices.len());
         for id in &user.devices {
             let filter = doc! {
                 "id": id.clone()
             };
-            if let Some(dev) = self.devices.find_one(filter, None).await.context("error-net")? {
-                let dev: Device = bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
+            if let Some(dev) = self
+                .devices
+                .find_one(filter, None)
+                .await
+                .context("error-net")?
+            {
+                let dev: Device =
+                    bson::from_bson(bson::Bson::Document(dev)).context("error-unknown")?;
 
                 let count_filter = doc! {
                     "id": dev.id.clone(),
@@ -374,7 +461,7 @@ impl Database {
     pub async fn fetch_message_list(
         &self,
         info: FetchMessageListRequest,
-    ) -> anyhow::Result<Vec<MessageInfo>> {
+    ) -> anyhow::Result<(u32, Vec<MessageInfo>)> {
         if !self.check_login(&info.login_token).await? {
             bail!("Login has expired");
         }
@@ -386,6 +473,11 @@ impl Database {
                 "$lte": info.end_timestamp,
             }
         };
+        let count = self
+            .messages
+            .count_documents(filter.clone(), None)
+            .await
+            .context("error-net")? as u32;
         let find_options = FindOptions::builder()
             .sort(doc! { "timestamp": -1 })
             .build();
@@ -397,7 +489,8 @@ impl Database {
             .skip(info.first_index);
         let mut messages = vec![];
         while let Some(msg) = cursor.next().await {
-            let msg: Message = bson::from_bson(bson::Bson::Document(msg.context("error-unknown")?)).context("error-unknown")?;
+            let msg: Message = bson::from_bson(bson::Bson::Document(msg.context("error-unknown")?))
+                .context("error-unknown")?;
             let msg = MessageInfo {
                 id: msg.id,
                 info: msg.info,
@@ -413,7 +506,7 @@ impl Database {
             }
         }
 
-        Ok(messages)
+        Ok((count, messages))
     }
 
     const MAX_LOGIN_TIME_SECS: i64 = 3600;
@@ -437,7 +530,10 @@ impl Database {
                 .naive_utc()
                 .signed_duration_since(login_time.naive_utc());
             if diff.num_seconds() > Self::MAX_LOGIN_TIME_SECS {
-                self.login_records.delete_one(filter, None).await.context("error-net")?;
+                self.login_records
+                    .delete_one(filter, None)
+                    .await
+                    .context("error-net")?;
             } else {
                 return Ok(true);
             }

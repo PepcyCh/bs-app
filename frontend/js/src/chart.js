@@ -24,8 +24,8 @@ export default class Chart extends React.Component {
     render() {
         const { value } = this.state;
         return (
-            <FlexibleWidthXYPlot height={this.props.height} xType="time">
-                <XAxis />
+            <FlexibleWidthXYPlot height={this.props.height} >
+                <XAxis hideTicks />
                 <YAxis />
                 <HorizontalGridLines />
                 <VerticalGridLines />

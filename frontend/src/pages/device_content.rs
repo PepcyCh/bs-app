@@ -8,7 +8,7 @@ use crate::{
         paged_list::PagedList,
     },
 };
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use common::{
     request::{FetchDeviceProfileRequest, FetchMessageListRequest},
     response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo},
@@ -53,6 +53,7 @@ struct State {
     alert_message_count: u32,
     first_index: usize,
     limit: usize,
+    searched_message_count: u32,
     messages: Vec<MessageInfo>,
     err: Option<String>,
 }
@@ -66,6 +67,7 @@ pub enum Msg {
     FetchProfileResponse(FetchDeviceProfileResponse),
     Fetch,
     FetchResponse(FetchMessageListResponse),
+    Search,
     ChangePage(usize, usize),
 }
 
@@ -88,7 +90,7 @@ impl Component for DeviceContent {
         let state = State {
             start_timestamp_str: "".to_string(),
             end_timestamp_str: "".to_string(),
-            limit: 20,
+            limit: 15,
             ..Default::default()
         };
         let mut component = Self {
@@ -152,16 +154,16 @@ impl Component for DeviceContent {
             Msg::Fetch => {
                 self.state.err = None;
                 let start_timestamp = if let Ok(datetime) =
-                    DateTime::parse_from_str(&self.state.start_timestamp_str, "%Y-%m-%dT%H:%M")
+                    NaiveDateTime::parse_from_str(&self.state.start_timestamp_str, "%Y-%m-%dT%H:%M")
                 {
-                    datetime.timestamp()
+                    datetime.timestamp() * 1000
                 } else {
                     0
                 };
                 let end_timestamp = if let Ok(datetime) =
-                    DateTime::parse_from_str(&self.state.end_timestamp_str, "%Y-%m-%dT%H:%M")
+                    NaiveDateTime::parse_from_str(&self.state.end_timestamp_str, "%Y-%m-%dT%H:%M")
                 {
-                    datetime.timestamp()
+                    datetime.timestamp() * 1000
                 } else {
                     std::i64::MAX
                 };
@@ -186,6 +188,7 @@ impl Component for DeviceContent {
                 self.fetch_task = None;
                 if response.success {
                     self.state.messages = response.messages;
+                    self.state.searched_message_count = response.count;
                 } else if response.err == "Login has expired" {
                     self.update(Msg::ToLogin);
                 } else {
@@ -193,8 +196,12 @@ impl Component for DeviceContent {
                 }
                 true
             }
-            Msg::ChangePage(first_index, limit) => {
-                self.state.first_index = first_index;
+            Msg::Search => {
+                self.state.first_index = 0;
+                self.update(Msg::Fetch)
+            }
+            Msg::ChangePage(page_index, limit) => {
+                self.state.first_index = page_index * limit;
                 self.state.limit = limit;
                 self.update(Msg::Fetch)
             }
@@ -215,10 +222,7 @@ impl Component for DeviceContent {
             .link
             .callback(|e: InputData| Msg::EditStartTime(e.value));
         let end_time_oninput = self.link.callback(|e: InputData| Msg::EditEndTime(e.value));
-        let fetch_click = self.link.callback(|_| Msg::Fetch);
-        let list_on_page_changed = self
-            .link
-            .callback(|data: (usize, usize)| Msg::ChangePage(data.0, data.1));
+        let fetch_click = self.link.callback(|_| Msg::Search);
 
         html! {
             <div class="container">
@@ -263,17 +267,22 @@ impl Component for DeviceContent {
                             raised=true
                             disabled=self.need_to_disable() />
                     </RouterAnchor<AppRoute>>
-                    // TODO - custom datetme input ?
-                    <input
-                        class="form-row-item"
-                        type="datetime-local"
-                        value=self.state.start_timestamp_str.clone()
-                        oninput=start_time_oninput />
-                    <input
-                        class="form-row-item"
-                        type="datetime-local"
-                        value=self.state.end_timestamp_str.clone()
-                        oninput=end_time_oninput />
+                    <div class="datetime-input">
+                        <p>{ fluent!(self.props.lang_id, "start-time-label") }</p>
+                        <input
+                            class="form-row-item"
+                            type="datetime-local"
+                            value=self.state.start_timestamp_str.clone()
+                            oninput=start_time_oninput />
+                    </div>
+                    <div class="datetime-input">
+                        <p>{ fluent!(self.props.lang_id, "end-time-label") }</p>
+                        <input
+                            class="form-row-item"
+                            type="datetime-local"
+                            value=self.state.end_timestamp_str.clone()
+                            oninput=end_time_oninput />
+                    </div>
                     <span
                         class="form-row-item"
                         onclick=fetch_click
@@ -286,29 +295,7 @@ impl Component for DeviceContent {
                     </span>
                 </div>
                 { self.fetching_progress() }
-                <p>
-                    { fluent!(self.props.lang_id, "device-stat", {
-                        "total" => self.state.message_count,
-                        "alert" => self.state.alert_message_count,
-                    }) }
-                </p>
-                <h3 class="map-desc">{ fluent!(self.props.lang_id, "map-label") }</h3>
-                <div class="device-map">
-                    { self.message_map() }
-                </div>
-                <h3 class="chart-desc">{ fluent!(self.props.lang_id, "chart-label") }</h3>
-                <div class="device-charts">
-                    { self.message_line_chart() }
-                </div>
-                <h3 class="msg-title">{ fluent!(self.props.lang_id, "msg-title") }</h3>
-                <PagedList
-                    lang_id=self.props.lang_id.clone()
-                    page_size=20
-                    items_count=self.state.message_count as usize
-                    disabled=self.need_to_disable()
-                    on_page_changed=list_on_page_changed >
-                    { self.messages_html() }
-                </PagedList>
+                { self.content_html() }
             </div>
         }
     }
@@ -328,6 +315,46 @@ impl DeviceContent {
             }
         } else {
             html! {}
+        }
+    }
+
+    fn content_html(&self) -> yew::Html {
+        if self.state.messages.is_empty() {
+            html! {
+                <p class="no-data">{ fluent!(self.props.lang_id, "no-data") }</p>
+            }
+        } else {
+            let list_on_page_changed = self
+                .link
+                .callback(|data: (usize, usize)| Msg::ChangePage(data.0, data.1));
+
+            html! {
+                <>
+                    <p>
+                        { fluent!(self.props.lang_id, "device-stat", {
+                            "total" => self.state.message_count,
+                            "alert" => self.state.alert_message_count,
+                        }) }
+                    </p>
+                    <h3 class="map-desc">{ fluent!(self.props.lang_id, "map-label") }</h3>
+                    <div class="device-map">
+                        { self.message_map() }
+                    </div>
+                    <h3 class="chart-desc">{ fluent!(self.props.lang_id, "chart-label") }</h3>
+                    <div class="device-charts">
+                        { self.message_line_chart() }
+                    </div>
+                    <h3 class="msg-title">{ fluent!(self.props.lang_id, "msg-title") }</h3>
+                    <PagedList
+                        lang_id=self.props.lang_id.clone()
+                        page_size=self.state.limit
+                        items_count=self.state.searched_message_count as usize
+                        disabled=self.need_to_disable()
+                        on_page_changed=list_on_page_changed >
+                        { self.messages_html() }
+                    </PagedList>
+                </>
+            }
         }
     }
 

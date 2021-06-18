@@ -59,7 +59,7 @@ async fn check_login(info: web::Json<String>, db: web::Data<Database>) -> impl R
             return HttpResponse::Ok().json(SimpleResponse {
                 success: true,
                 err: "".to_string(),
-            })
+            });
         }
     }
     HttpResponse::Ok().json(SimpleResponse::err("Login has expired"))
@@ -169,9 +169,10 @@ async fn fetch_message_list(
 ) -> impl Responder {
     let info = info.into_inner();
     match db.fetch_message_list(info).await {
-        Ok(messages) => HttpResponse::Ok().json(FetchMessageListResponse {
+        Ok((count, messages)) => HttpResponse::Ok().json(FetchMessageListResponse {
             success: true,
             err: "".to_string(),
+            count,
             messages,
         }),
         Err(err) => HttpResponse::Ok().json(FetchMessageListResponse::err(err)),

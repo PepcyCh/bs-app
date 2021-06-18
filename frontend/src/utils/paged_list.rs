@@ -63,7 +63,7 @@ impl Component for PagedList {
                 self.state.curr_page = 0;
             }
             Msg::LastPage => {
-                self.state.curr_page = page_count;
+                self.state.curr_page = page_count - 1;
             }
             Msg::NextPage => {
                 self.state.curr_page = (self.state.curr_page + 1).min(page_count - 1);

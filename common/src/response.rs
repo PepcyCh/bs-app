@@ -63,6 +63,7 @@ pub struct MessageInfo {
 pub struct FetchMessageListResponse {
     pub success: bool,
     pub err: String,
+    pub count: u32,
     pub messages: Vec<MessageInfo>,
 }
 
