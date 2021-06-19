@@ -61,6 +61,7 @@ pub enum Msg {
 }
 
 const STORAGE_KEY: &str = "pepcy.device_viewer";
+const STORAGE_KEY_DEVICE: &str = "pepcy.device_viewer.device";
 const STORAGE_KEY_LANG: &str = "pepcy.device_viewer.lang";
 
 const LANG_LIST_ITEMS: [(&str, &str); 2] = [("简体中文", "zh-CN"), ("English", "en-US")];
@@ -70,6 +71,13 @@ struct StoredData {
     login_token: String,
     mail: String,
     name: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct StoredDeviceData {
+    device_id: String,
+    device_name: String,
+    device_info: String,
 }
 
 impl Component for App {
@@ -90,6 +98,16 @@ impl Component for App {
             state.login_token = login_token;
             state.mail = mail;
             state.name = name;
+        }
+        if let Json(Ok(StoredDeviceData {
+            device_id,
+            device_name,
+            device_info,
+        })) = storage.restore(STORAGE_KEY_DEVICE)
+        {
+            state.device_id = device_id;
+            state.device_name = device_name;
+            state.device_info = device_info;
         }
         let lang = if let Json(Ok(lang)) = storage.restore(STORAGE_KEY_LANG) {
             lang
@@ -154,9 +172,17 @@ impl Component for App {
                 }
             }
             Msg::SelectDevice((id, name, info)) => {
-                self.state.device_id = id;
-                self.state.device_name = name;
-                self.state.device_info = info;
+                self.state.device_id = id.clone();
+                self.state.device_name = name.clone();
+                self.state.device_info = info.clone();
+
+                let data = StoredDeviceData {
+                    device_id: id,
+                    device_name: name,
+                    device_info: info,
+                };
+                self.storage.store(STORAGE_KEY_DEVICE, Json(&data));
+
                 true
             }
         }
