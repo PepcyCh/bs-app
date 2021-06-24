@@ -34,9 +34,11 @@ async fn main() -> std::io::Result<()> {
     mqtt::run_mqtt_broker();
     println!("MQTT broker is running");
 
-    let config_json = include_str!("../config/server_cfg.json");
-    let config: ServerConfig = serde_json::from_str(config_json).expect("Invalid config.json");
-    assert!(config.validate(), "Invalid config.json");
+    let config_json =
+        std::fs::File::open("./config/server_cfg.json").expect("Server config json not found");
+    let config: ServerConfig =
+        serde_json::from_reader(&config_json).expect("Invalid server config json");
+    assert!(config.validate(), "Invalid server config json");
 
     let database = web::Data::new(Database::new(config.db_url()).await.unwrap());
     println!("MongoDB is connected");

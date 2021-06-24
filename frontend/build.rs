@@ -1,18 +1,24 @@
 use std::process::Command;
 
-fn main() {
-    // TODO - there is something wrong on Windows...
+fn rollup() {
     if cfg!(target_os = "windows") {
         return;
     }
 
-    let status = Command::new("npm")
-        .args(&["run", "build"])
+    println!("cargo:rerun-if-changed=js/src/*");
+    println!("cargo:rerun-if-changed=js/rollup.config.js");
+
+    let status = Command::new("rollup")
+        .args(&["-c"])
         .current_dir("./js")
         .status()
-        .expect("Failed to run npm build");
+        .expect("Failed to run rollup");
     if !status.success() {
         panic!("Failed to bundle js. Process exits with {}", status);
     }
-    eprintln!("JS is bundled");
+    eprintln!("Js is bundled");
+}
+
+fn main() {
+    rollup();
 }

@@ -4,15 +4,12 @@ version = "0.1.0"
 authors = ["PepcyCh <pepsich86@163.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = "1.0.40"
 serde = "1.0.126"
 serde_json = "1.0.64"
 yew = "0.18.0"
 yew-router = "0.15.0"
-# yew-material = { git = "https://github.com/hamza1311/yew-material/", branch = "master", features = ["full"] }
 yew-material = { git = "https://github.com/PepcyCh/yew-material/", branch = "master", features = ["full"] }
 web-sys = "0.3.51"
 js-sys = "0.3.51"
@@ -25,3 +22,7 @@ fluent-templates = "0.6.1"
 maplit = "1.0.2"
 
 common = { path = "../common" }
+
+[build-dependencies]
+fs_extra = "1.2.0"
+glob = "0.3.0"
