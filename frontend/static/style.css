@@ -70,17 +70,14 @@ body {
 .device-list-item .device-name {
     color: black;
     font-weight: bold;
-    padding-right: 10px;
 }
 
 .device-list-item .device-id {
     color: gray;
-    padding-right: 10px;
 }
 
 .device-list-item .device-stat {
     color: black;
-    padding-right: 10px;
 }
 
 .device-info .device-id {

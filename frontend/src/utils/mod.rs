@@ -18,7 +18,7 @@ macro_rules! create_fetch_task {
                 if let Ok(result) = data {
                     Msg::$res_msg(result)
                 } else {
-                    Msg::$res_msg(<$res_ty>::err("Unknown error"))
+                    Msg::$res_msg(<$res_ty>::err("error-unknown"))
                 }
             });
         let task = FetchService::fetch(request, callback).expect("Failed to start request");

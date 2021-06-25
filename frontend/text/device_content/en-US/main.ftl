@@ -13,8 +13,8 @@ device-stat = { $total ->
     } alert
 map-label = Sending places
 chart-label = Sending time
-start-time-label = Start Time
-end-time-label = Start Time
+start-time-label = Begin Time
+end-time-label = End Time
 no-data = No message is sent by this device. Maybe this device doesn't exist.
 msg-title = Detailed Data
 msg-value = Value: { $value }

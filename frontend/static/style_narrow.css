@@ -18,15 +18,7 @@
         padding-bottom: 5px;
     }
 
-    .device-list-item .device-name {
-        padding-right: 1px;
-    }
-
-    .device-list-item .device-id {
-        padding-right: 1px;
-    }
-
-    .device-list-item .device-stat {
-        padding-right: 1px;
+    .page-buttons {
+        flex-direction: column;
     }
 }
