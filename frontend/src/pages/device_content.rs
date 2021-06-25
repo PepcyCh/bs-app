@@ -14,7 +14,7 @@ use common::{
     response::{ErrorResponse, FetchDeviceProfileResponse, FetchMessageListResponse, MessageInfo},
 };
 use fluent_templates::{static_loader, LanguageIdentifier, Loader};
-use std::rc::Rc;
+use std::{rc::Rc, time::Duration};
 use yew::{
     agent::Bridged,
     classes,
@@ -22,7 +22,8 @@ use yew::{
     html,
     services::{
         fetch::{FetchTask, Request, Response},
-        FetchService,
+        timeout::TimeoutTask,
+        FetchService, TimeoutService,
     },
     Bridge, Component, ComponentLink, InputData, Properties,
 };
@@ -43,6 +44,7 @@ pub struct DeviceContent {
     state: State,
     route_agent: Box<dyn Bridge<RouteAgent>>,
     fetch_task: Option<FetchTask>,
+    timeout_task: Option<TimeoutTask>,
 }
 
 #[derive(Default)]
@@ -60,6 +62,7 @@ struct State {
 
 pub enum Msg {
     Nop,
+    Refresh,
     ToLogin,
     EditStartTime(String),
     EditEndTime(String),
@@ -93,12 +96,16 @@ impl Component for DeviceContent {
             limit: 15,
             ..Default::default()
         };
+        // just a hack to fix the bug that the chart will not be shown ...
+        let timeout_task =
+            TimeoutService::spawn(Duration::new(2, 0), link.callback(|_| Msg::Refresh));
         let mut component = Self {
             link,
             props,
             state,
             route_agent,
             fetch_task: None,
+            timeout_task: Some(timeout_task),
         };
         if component.props.login_token.is_empty() {
             component.update(Msg::ToLogin);
@@ -111,6 +118,12 @@ impl Component for DeviceContent {
     fn update(&mut self, msg: Self::Message) -> yew::ShouldRender {
         match msg {
             Msg::Nop => false,
+            Msg::Refresh => {
+                if let Some(timeout_task) = std::mem::replace(&mut self.timeout_task, None) {
+                    drop(timeout_task);
+                }
+                true
+            }
             Msg::ToLogin => {
                 self.route_agent
                     .send(ChangeRoute(AppRoute::LogoutHint.into()));
@@ -145,7 +158,7 @@ impl Component for DeviceContent {
                     self.state.message_count = response.message_count;
                     self.state.alert_message_count = response.alert_message_count;
                 } else if response.err == "Login has expired" {
-                    self.update(Msg::ToLogin);
+                    return self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }
@@ -190,7 +203,7 @@ impl Component for DeviceContent {
                     self.state.messages = response.messages;
                     self.state.searched_message_count = response.count;
                 } else if response.err == "Login has expired" {
-                    self.update(Msg::ToLogin);
+                    return self.update(Msg::ToLogin);
                 } else {
                     self.state.err = Some(fluent!(self.props.lang_id, &response.err));
                 }

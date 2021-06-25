@@ -3,30 +3,9 @@ mod database;
 mod mqtt;
 mod server;
 
-use actix_files::NamedFile;
-use actix_web::{get, web, App, HttpServer, Responder};
+use actix_web::{web, App, HttpServer};
 use config::ServerConfig;
 use database::Database;
-
-#[get("/")]
-async fn index() -> impl Responder {
-    NamedFile::open("index.html")
-}
-
-#[get("/{filename}")]
-async fn wasm(web::Path(filename): web::Path<String>) -> impl Responder {
-    NamedFile::open(filename)
-}
-
-#[get("/snippets/{crate_name}/build/{filename}")]
-async fn mwc_js(web::Path((crate_name, filename)): web::Path<(String, String)>) -> impl Responder {
-    NamedFile::open(format!("snippets/{}/build/{}", crate_name, filename))
-}
-
-#[get("/snippets/{crate_name}/js/dist/{filename}")]
-async fn comp_js(web::Path((crate_name, filename)): web::Path<(String, String)>) -> impl Responder {
-    NamedFile::open(format!("snippets/{}/js/dist/{}", crate_name, filename))
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -49,10 +28,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(database.clone())
-            .service(wasm)
-            .service(mwc_js)
-            .service(comp_js)
-            .service(index)
             .configure(server::config)
     })
     .bind(config.addr())
