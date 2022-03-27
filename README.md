@@ -59,7 +59,9 @@ server {
         } 
 ```
 
-Configure the dynamic content, i.e., API requests, to the address configured on the backend, which is http://localhost:9000 by default, and then **start Nginx and the backend** to access it, where the backend can be run either by executing the generated executable directly, or by executing cargo run --release in its project root directory. in the project root directory.
+Configure the dynamic content, i.e., API requests, to the address configured on the backend, which is http://localhost:9000 by default, and then **start Nginx and the backend** to access it, where the backend can be run either by executing the generated executable directly, or by executing `cargo run --release` in its project root directory.
 
 
+
+configure nginx.
 
