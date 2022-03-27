@@ -44,6 +44,14 @@ The result of the build is under the target/release folder.
 
 ### Deployment
 
+#### MongoDB
+
+create free cluster at https://cloud.mongodb.com
+
+add your ip address in security/network/accessList.
+
+#### Nginx
+
 We could choose Nginx for deployment and configure the static content (.html, .js, .wasm, .css, .ico) files in the front-end build results directory. Choose /dist for the configuration.
 
 change nginx-1.21.6\conf\nginx.conf 
@@ -59,9 +67,7 @@ server {
         } 
 ```
 
-Configure the dynamic content, i.e., API requests, to the address configured on the backend, which is http://localhost:9000 by default, and then **start Nginx and the backend** to access it, where the backend can be run either by executing the generated executable directly, or by executing `cargo run --release` in its project root directory.
+Configure the dynamic content, i.e., API requests, to the address configured on the backend, which is http://localhost:9000 by default, and then **start Nginx and the backend** to access it. where the backend can be run either by executing the generated executable directly, or by executing `cargo run --release` in its project root directory.
 
 
-
-configure nginx.
 
