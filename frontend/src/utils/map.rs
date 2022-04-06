@@ -46,13 +46,14 @@ impl Component for Map {
     }
 
     fn view(&self) -> yew::Html {
+        //rust改成js格式。
         let data_js = js_sys::Array::new();
         for data in self.props.data.iter() {
             let item_js = js_sys::Object::new();
             js_sys::Reflect::set(
                 &item_js,
                 &JsValue::from_str("x"),
-                &JsValue::from_f64(data.x),
+                &JsValue::from_f64(data.x), // 自己的property 
             )
             .unwrap();
             js_sys::Reflect::set(
@@ -70,7 +71,7 @@ impl Component for Map {
             data_js.push(&item_js);
         }
 
-        render_map(&self.node, &data_js);
+        render_map(&self.node, &data_js);// 调用js的render map函数。
 
         VNode::VRef(self.node.clone())
     }
@@ -78,5 +79,5 @@ impl Component for Map {
 
 #[wasm_bindgen(module = "/js/dist/bundle.js")]
 extern "C" {
-    fn render_map(node: &Node, data: &JsValue);
+    fn render_map(node: &Node, data: &JsValue);//和js绑定。 
 }

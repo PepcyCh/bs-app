@@ -97,7 +97,7 @@ impl Component for LoginComponent {
                     };
                     crate::create_fetch_task!(
                         self,
-                        "/login",
+                        "/api/login",
                         request,
                         LoginResponse,
                         LoginResponse

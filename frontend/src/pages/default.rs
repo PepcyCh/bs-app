@@ -59,7 +59,7 @@ impl Component for DefaultComponent {
             Msg::Nop => false,
             Msg::Check => {
                 let login_token = (*self.props.login_token).clone();
-                crate::create_fetch_task!(self, "/check_login", login_token, CheckResponse);
+                crate::create_fetch_task!(self, "/api/check_login", login_token, CheckResponse);
                 true
             }
             Msg::CheckResponse(response) => {

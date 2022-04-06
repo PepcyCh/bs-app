@@ -1,5 +1,5 @@
 use crate::database::Database;
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{post, get, web, HttpResponse, Responder};
 use common::{
     request::{
         CreateDeviceRequest, FetchDeviceListRequest, FetchDeviceProfileRequest, FetchDeviceRequest,
@@ -12,7 +12,7 @@ use common::{
     },
 };
 
-#[post("/login")]
+#[post("/api/login")]
 async fn login(info: web::Json<LoginRequest>, db: web::Data<Database>) -> impl Responder {
     let info = info.into_inner();
     match db.login(info).await {
@@ -27,7 +27,7 @@ async fn login(info: web::Json<LoginRequest>, db: web::Data<Database>) -> impl R
     }
 }
 
-#[post("/register")]
+#[post("/api/register")]
 async fn register(info: web::Json<RegisterRequest>, db: web::Data<Database>) -> impl Responder {
     let info = info.into_inner();
     match db.register(info).await {
@@ -39,7 +39,7 @@ async fn register(info: web::Json<RegisterRequest>, db: web::Data<Database>) -> 
     }
 }
 
-#[post("/logout")]
+#[post("/api/logout")]
 async fn logout(info: web::Json<String>, db: web::Data<Database>) -> impl Responder {
     let login_token = info.into_inner();
     match db.logout(&login_token).await {
@@ -51,7 +51,7 @@ async fn logout(info: web::Json<String>, db: web::Data<Database>) -> impl Respon
     }
 }
 
-#[post("/check_login")]
+#[post("/api/check_login")]
 async fn check_login(info: web::Json<String>, db: web::Data<Database>) -> impl Responder {
     let login_token = info.into_inner();
     if let Ok(res) = db.check_login(&login_token).await {
@@ -65,7 +65,7 @@ async fn check_login(info: web::Json<String>, db: web::Data<Database>) -> impl R
     HttpResponse::Ok().json(SimpleResponse::err("Login has expired"))
 }
 
-#[post("/create_device")]
+#[post("/api/create_device")]
 async fn create_device(
     info: web::Json<CreateDeviceRequest>,
     db: web::Data<Database>,
@@ -80,7 +80,7 @@ async fn create_device(
     }
 }
 
-#[post("/remove_device")]
+#[post("/api/remove_device")]
 async fn remove_device(
     info: web::Json<RemoveDeviceRequest>,
     db: web::Data<Database>,
@@ -110,7 +110,7 @@ async fn modify_device(
     }
 }
 
-#[post("/fetch_device")]
+#[post("/api/fetch_device")]
 async fn fetch_device(
     info: web::Json<FetchDeviceRequest>,
     db: web::Data<Database>,
@@ -128,7 +128,7 @@ async fn fetch_device(
     }
 }
 
-#[post("/fetch_device_profile")]
+#[post("/api/fetch_device_profile")]
 async fn fetch_device_profile(
     info: web::Json<FetchDeviceProfileRequest>,
     db: web::Data<Database>,
@@ -146,7 +146,7 @@ async fn fetch_device_profile(
     }
 }
 
-#[post("/fetch_device_list")]
+#[post("/api/fetch_device_list")]
 async fn fetch_device_list(
     info: web::Json<FetchDeviceListRequest>,
     db: web::Data<Database>,
@@ -162,7 +162,7 @@ async fn fetch_device_list(
     }
 }
 
-#[post("/fetch_message_list")]
+#[post("/api/fetch_message_list")]
 async fn fetch_message_list(
     info: web::Json<FetchMessageListRequest>,
     db: web::Data<Database>,

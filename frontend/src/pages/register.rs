@@ -127,7 +127,7 @@ impl Component for RegisterComponent {
                         name: self.state.name.clone(),
                         password: hashed_password,
                     };
-                    crate::create_fetch_task!(self, "/register", request, RegisterResponse);
+                    crate::create_fetch_task!(self, "/api/register", request, RegisterResponse);
                 }
                 true
             }

@@ -24,6 +24,7 @@ async fn main() -> std::io::Result<()> {
 
     mqtt::run_mqtt_subscriber(database.clone());
     println!("MQTT subscriber is running");
+    println!("{}", config.addr());
 
     HttpServer::new(move || {
         App::new()
