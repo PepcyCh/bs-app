@@ -145,7 +145,7 @@ impl Component for DeviceContent {
                 };
                 crate::create_fetch_task!(
                     self,
-                    "/fetch_device_profile",
+                    "/api/fetch_device_profile",
                     request,
                     FetchDeviceProfileResponse,
                     FetchProfileResponse,
@@ -190,7 +190,7 @@ impl Component for DeviceContent {
                 };
                 crate::create_fetch_task!(
                     self,
-                    "/fetch_message_list",
+                    "/api/fetch_message_list",
                     request,
                     FetchMessageListResponse,
                     FetchResponse,

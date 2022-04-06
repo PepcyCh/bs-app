@@ -54,20 +54,20 @@ add your ip address in security/network/accessList.
 
 We could choose Nginx for deployment and configure the static content (.html, .js, .wasm, .css, .ico) files in the front-end build results directory. Choose /dist for the configuration.
 
-change nginx-1.21.6\conf\nginx.conf 
-
-```
-server {
-
-    listen    9000;
-    
-        location / {
-            root  xxx\bs-app\frontend\dist;
-            index  index.html index.htm;
-        } 
-```
-
 Configure the dynamic content, i.e., API requests, to the address configured on the backend, which is http://localhost:9000 by default, and then **start Nginx and the backend** to access it. where the backend can be run either by executing the generated executable directly, or by executing `cargo run --release` in its project root directory.
 
+change nginx-1.21.6\conf\nginx.conf  like Nginx Example:
 
+```nginx
+        listen       9000;
+        server_name  localhost;
+        location /api/ {
+            proxy_pass http://127.0.0.1:8090;
+        }
+
+        location / {
+            root   xxx\bs-app\frontend\dist;
+            index  index.html index.htm;
+        }
+```
 

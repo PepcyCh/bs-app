@@ -123,7 +123,7 @@ impl Component for ModifyDevice {
                         name: self.state.name.clone(),
                         info: self.state.info.clone(),
                     };
-                    crate::create_fetch_task!(self, "/modify_device", request, SaveResponse);
+                    crate::create_fetch_task!(self, "/api/modify_device", request, SaveResponse);
                     true
                 }
             }

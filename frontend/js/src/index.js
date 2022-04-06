@@ -8,5 +8,6 @@ export function render_line_chart(node, height, data) {
 
 export function render_map(node, data) {
     const map = <PMap data={data} />;
+    // 这里创建组件，
     ReactDOM.render(map, node);
 }

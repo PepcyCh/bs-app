@@ -101,7 +101,7 @@ impl Component for HomeComponent {
             Msg::Logout => {
                 self.state.err = None;
                 let login_token = (*self.props.login_token).clone();
-                crate::create_fetch_task!(self, "/logout", login_token, LogoutRespone);
+                crate::create_fetch_task!(self, "/api/logout", login_token, LogoutRespone);
                 true
             }
             Msg::LogoutRespone(_) => {
@@ -129,7 +129,7 @@ impl Component for HomeComponent {
                     };
                     crate::create_fetch_task!(
                         self,
-                        "/create_device",
+                        "/api/create_device",
                         request,
                         CreateDeviceResponse
                     );
@@ -158,7 +158,7 @@ impl Component for HomeComponent {
                         mail: (*self.props.mail).clone(),
                         id: self.state.devices[index].id.clone(),
                     };
-                    crate::create_fetch_task!(self, "remove_device", request, RemoveDeviceResponse);
+                    crate::create_fetch_task!(self, "/api/remove_device", request, RemoveDeviceResponse);
                     true
                 }
             }
@@ -182,7 +182,7 @@ impl Component for HomeComponent {
                 };
                 crate::create_fetch_task!(
                     self,
-                    "/fetch_device_list",
+                    "/api/fetch_device_list",
                     request,
                     FetchDeviceListResponse,
                     FetchResponse,
@@ -210,7 +210,7 @@ impl Component for HomeComponent {
                     };
                     crate::create_fetch_task!(
                         self,
-                        "/fetch_device",
+                        "/api/fetch_device",
                         request,
                         FetchDeviceResponse,
                         ModifyResponse,
@@ -244,7 +244,7 @@ impl Component for HomeComponent {
                     };
                     crate::create_fetch_task!(
                         self,
-                        "/fetch_device",
+                        "/api/fetch_device",
                         request,
                         FetchDeviceResponse,
                         DetialsResponse,
